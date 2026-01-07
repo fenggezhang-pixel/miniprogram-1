@@ -1,0 +1,89 @@
+/* miniprogram/pages/index/index.wxss */
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 40rpx;
+  color: #0066cc; /* 成都地铁蓝 */
+}
+
+.date-wrap {
+  background: #fff;
+  padding: 20rpx;
+  border-radius: 10rpx;
+  margin-bottom: 30rpx;
+}
+
+.picker {
+  font-size: 32rpx;
+  padding: 15rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.input-wrap input {
+  flex: 1;
+  height: 80rpx;
+  border: 1rpx solid #eee;
+  border-radius: 5rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+}
+
+.query-btn {
+  background: #0066cc;
+  color: #fff;
+  border-radius: 8rpx;
+  height: 88rpx;
+  font-size: 32rpx;
+}
+
+.flow-wrap {
+  background: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-top: 30rpx;
+}
+
+.total-flow {
+  font-size: 32rpx;
+  margin-bottom: 20rpx;
+}
+
+.value {
+  color: #e64340; /* 强调色 */
+  font-weight: bold;
+}
+
+.line-flow {
+  font-size: 28rpx;
+  margin: 10rpx 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.empty-tip {
+  text-align: center;
+  font-size: 28rpx;
+  color: #999;
+  margin-top: 50rpx;
+}
+
+.chart-wrap {
+  margin-top: 30rpx;
+  background: #fff;
+  padding: 20rpx;
+  border-radius: 10rpx;
+}

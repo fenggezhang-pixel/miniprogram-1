@@ -1,0 +1,557 @@
+<!--pages/index/index.wxml-->
+<wxs src="./weather.wxs" module="weatherUtil" />
+<view class="container">
+  <!-- 头部Logo -->
+  <view class="header">
+    <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+    <text class="title">蓉城客流</text>
+    <text class="subtitle">成都地铁客流查询</text>
+  </view>
+
+  <!-- 日期选择区域 -->
+  <view class="date-section">
+    <picker mode="date" value="{{selectedDate}}" start="2010-09-27" end="{{currentDate}}" bindchange="onDateChange">
+      <view class="date-picker-touchable" hover-class="date-picker-hover" bindlongpress="openDatePicker">
+        <text class="date-icon">📅</text>
+        <text class="date-text">{{selectedDate}}</text>
+        <text class="date-arrow">▼</text>
+      </view>
+    </picker>
+    <view class="quick-buttons">
+      <button class="quick-btn btn-latest" bindtap="queryLatest">最新</button>
+      <button class="quick-btn btn-previous" bindtap="queryPreviousDay">前一天</button>
+      <button class="quick-btn btn-next" bindtap="queryNextDay">后一天</button>
+    </view>
+  </view>
+
+  <!-- 标签切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 'daily' ? 'active' : ''}}" bindtap="switchTab" data-tab="daily">
+      <text>昨日客流</text>
+    </view>
+    <view class="tab-item {{activeTab === 'weekly' ? 'active' : ''}}" bindtap="switchTab" data-tab="weekly">
+      <text>近7日趋势</text>
+    </view>
+    <view class="tab-item {{activeTab === 'compare' ? 'active' : ''}}" bindtap="switchTab" data-tab="compare">
+      <text>客流对比</text>
+    </view>
+    <view class="tab-item {{activeTab === 'top10' ? 'active' : ''}}" bindtap="switchTab" data-tab="top10">
+      <text>历史前十</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-container">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在查询...</text>
+  </view>
+
+  <!-- 错误提示 -->
+  <view wx:elif="{{errorMsg && !hasData}}" class="error-container">
+    <text class="error-icon">📭</text>
+    <text class="error-text">{{errorMsg}}</text>
+  </view>
+
+  <!-- 当日数据展示 -->
+  <view wx:elif="{{hasData && activeTab === 'daily'}}" class="data-container">
+    <!-- 基本信息卡片 -->
+    <view class="info-card">
+      <view class="info-row">
+        <view class="info-item">
+          <text class="info-label">日期类型</text>
+          <text class="info-value">{{passengerData.dayType}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">农历</text>
+          <text class="info-value">{{passengerData.lunarDate}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">星期</text>
+          <text class="info-value">{{passengerData.weekday}}</text>
+        </view>
+      </view>
+      <view class="info-row">
+        <view class="info-item">
+          <text class="info-label">天气</text>
+          <text class="info-value">{{weatherUtil.getWeatherIcon(passengerData.weather)}} {{passengerData.weather}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">气温</text>
+          <text class="info-value">{{passengerData.minTemp}}°~{{passengerData.maxTemp}}°</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">限行</text>
+          <text class="info-value">{{passengerData.restrictedPlate}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 总客流卡片 - 左右分栏 -->
+    <view class="total-card">
+      <view class="total-card-split">
+        <!-- 左侧：纯地铁客流 -->
+        <view class="total-card-item metro-only">
+          <text class="total-item-label">纯地铁客流</text>
+          <view class="total-item-value-wrapper">
+            <text class="total-item-value">{{passengerData.metroOnlyPassengerDisplay || '0.00'}}</text>
+          </view>
+        </view>
+        
+        <!-- 分隔线 -->
+        <view class="total-card-divider"></view>
+        
+        <!-- 右侧：总客流 -->
+        <view class="total-card-item total-all">
+          <text class="total-item-label">全网客运量</text>
+          <view class="total-item-value-wrapper">
+            <text class="total-item-value">{{passengerData.totalPassengerDisplay || passengerData.totalPassenger}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 柱状图 -->
+    <view class="chart-card">
+      <view class="chart-header">
+        <text class="chart-title">各线路客流量（万人次）</text>
+        <view class="save-btn" bindtap="saveChart" data-chart="bar">
+          <text>保存图片</text>
+        </view>
+      </view>
+      <view class="chart-container bar-chart-container" bindtap="openBarChartFullscreen">
+        <canvas type="2d" id="barChart" class="chart-canvas bar-canvas"></canvas>
+        <view class="fullscreen-hint">
+          <text class="fullscreen-icon">⛶</text>
+        </view>
+      </view>
+      <!-- Logo水印 -->
+      <view class="chart-footer">
+        <image class="footer-logo" src="/images/logo.png" mode="aspectFit"></image>
+        <text class="footer-text">蓉城客流</text>
+      </view>
+    </view>
+
+    <!-- 分线路客流列表 -->
+    <view class="line-list">
+      <view class="line-list-header">
+        <text class="line-list-title">各线路客流明细</text>
+        <text class="line-list-subtitle">（按客流量降序排列）</text>
+      </view>
+      
+      <view class="line-item" wx:for="{{lineList}}" wx:key="key">
+        <view class="line-info">
+          <view class="line-badge" style="background-color: {{item.color}};">
+            <text class="line-name">{{item.name}}</text>
+          </view>
+        </view>
+        <view class="line-bar-wrapper">
+          <view class="line-bar" style="width: {{item.passenger / lineList[0].passenger * 100}}%; background-color: {{item.color}};"></view>
+        </view>
+        <view class="line-passenger">
+          <text class="passenger-value">{{item.displayPassenger}}<text class="passenger-unit">万</text></text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 柱状图放大查看 -->
+  <view wx:if="{{showBarChartFullscreen}}" class="chart-fullscreen-mask" bindtap="closeBarChartFullscreen">
+    <view class="chart-fullscreen-content" catchtap="preventClose">
+      <!-- 纯地铁客流标题区域 -->
+      <view class="metro-only-title-section">
+        <view class="metro-only-badge">
+          <text class="metro-only-icon">🚇</text>
+          <text class="metro-only-label">纯地铁客流</text>
+        </view>
+        <view class="metro-only-value-row">
+          <text class="metro-only-value">{{passengerData.metroOnlyPassengerDisplay}}</text>
+          <text class="metro-only-unit">万人次</text>
+        </view>
+        <view class="metro-only-date">{{selectedDate}}</view>
+      </view>
+      
+      <view class="chart-fullscreen-header">
+        <view>
+          <text class="chart-fullscreen-title">各线路客流量</text>
+          <text class="chart-fullscreen-subtitle">（{{selectedDate}}）</text>
+        </view>
+        <view class="save-btn" bindtap="saveChart" data-chart="bar-full">
+          <text>保存图片</text>
+        </view>
+      </view>
+      <view class="chart-fullscreen-body">
+        <canvas type="2d" id="barChartFull" class="chart-canvas bar-canvas-full"></canvas>
+      </view>
+      <!-- 用于保存的隐藏canvas -->
+      <canvas type="2d" id="saveCanvas" class="save-canvas"></canvas>
+    </view>
+  </view>
+
+  <!-- 7日趋势展示 -->
+  <view wx:elif="{{activeTab === 'weekly'}}" class="data-container">
+    <view class="chart-card weekly-chart">
+      <view class="chart-header">
+        <text class="chart-title">近7日客流趋势</text>
+        <view class="save-btn" bindtap="saveChart" data-chart="line">
+          <text>保存图片</text>
+        </view>
+      </view>
+      <view class="chart-container line-chart-container">
+        <canvas type="2d" id="lineChart" class="chart-canvas line-canvas"></canvas>
+      </view>
+      <!-- Logo水印 -->
+      <view class="chart-footer">
+        <image class="footer-logo" src="/images/logo.png" mode="aspectFit"></image>
+        <text class="footer-text">蓉城客流</text>
+      </view>
+    </view>
+
+    <!-- 7日柱状图 -->
+    <view class="chart-card weekly-chart" wx:if="{{weekData.length > 0}}">
+      <view class="chart-header">
+        <text class="chart-title">成都地铁线网客流</text>
+        <text class="chart-unit">万人次</text>
+      </view>
+      <view class="chart-container week-bar-chart-container">
+        <canvas type="2d" id="weekBarChart" class="chart-canvas week-bar-canvas"></canvas>
+      </view>
+      <!-- Logo水印 -->
+      <view class="chart-footer">
+        <image class="footer-logo" src="/images/logo.png" mode="aspectFit"></image>
+        <text class="footer-text">蓉城客流</text>
+      </view>
+    </view>
+
+    <!-- 7日数据列表 -->
+    <view class="week-list" wx:if="{{weekData.length > 0}}">
+      <view class="week-list-header">
+        <text class="week-list-title">近7日数据明细</text>
+      </view>
+      <view class="week-item" wx:for="{{weekData}}" wx:key="date" wx:for-index="idx">
+        <view class="week-date">
+          <text class="week-date-text">{{item.shortDate}}</text>
+          <text class="week-weekday">{{item.weekday}}</text>
+        </view>
+        <view class="week-bar-wrapper">
+          <view class="week-bar week-bar-{{idx}}" style="width: {{item.totalPassenger / weekData[0].totalPassenger * 100}}%;"></view>
+        </view>
+        <view class="week-value">
+          <text class="week-value-text">{{item.totalPassengerDisplay || item.totalPassenger}}</text>
+          <text class="week-value-unit">万</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 客流对比展示 -->
+  <view wx:elif="{{activeTab === 'compare'}}" class="data-container">
+    <!-- 日期选择区域 -->
+    <view class="compare-date-section">
+      <view class="compare-date-item">
+        <text class="compare-date-label">当天日期</text>
+        <text class="compare-date-value">{{selectedDate}}</text>
+      </view>
+      <view class="compare-date-item">
+        <text class="compare-date-label">对比日期</text>
+        <picker mode="date" value="{{compareCustomDate}}" start="2010-09-27" end="{{currentDate}}" bindchange="onCompareDateChange">
+          <view class="compare-date-picker">
+            <text class="compare-date-value">{{compareCustomDate || '请选择日期'}}</text>
+            <text class="compare-date-icon">📅</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 加载状态 -->
+    <view wx:if="{{compareLoading}}" class="loading-container">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">正在加载对比数据...</text>
+    </view>
+  
+    <view wx:else>
+      <!-- 对比图表 -->
+      <view class="chart-card">
+        <view class="chart-header">
+          <text class="chart-title">客流量对比</text>
+        </view>
+        <view class="chart-container compare-chart-container">
+          <canvas type="2d" id="compareChart" class="chart-canvas compare-canvas"></canvas>
+        </view>
+        <!-- 修复：添加chart-footer标签包裹水印 -->
+        <view class="chart-footer">
+          <image class="footer-logo" src="/images/logo.png" mode="aspectFit"></image>
+          <text class="footer-text">蓉城客流</text>
+        </view>
+      </view>
+  
+      <!-- 详细对比数据表格 -->
+      <view class="compare-table-card" wx:if="{{compareData.current && compareData.custom}}">
+        <view class="compare-table-header">
+          <text class="compare-table-title">详细对比数据</text>
+        </view>
+        <view class="compare-table">
+          <!-- 表头 -->
+          <view class="compare-table-row header-row">
+            <view class="compare-table-cell header-cell">对比项</view>
+            <view class="compare-table-cell header-cell current-header">
+              <view class="color-indicator" style="background: linear-gradient(to bottom, #52c41a 0%, #52c41a 50%, #ff4d4f 50%, #ff4d4f 100%);"></view>
+              <text>当天</text>
+            </view>
+            <view class="compare-table-cell header-cell custom-header">
+              <view class="color-indicator-line" style="background: #4EA666;"></view>
+              <text>对比日期</text>
+            </view>
+          </view>
+          
+          <!-- 日期 -->
+          <view class="compare-table-row data-row">
+            <view class="compare-table-cell label-cell">日期</view>
+            <view class="compare-table-cell value-cell">{{compareData.current.date}} {{compareData.current.weekday}}</view>
+            <view class="compare-table-cell value-cell">{{compareData.custom.date}} {{compareData.custom.weekday}}</view>
+          </view>
+
+          <!-- 客流量 -->
+          <view class="compare-table-row data-row highlight-row">
+            <view class="compare-table-cell label-cell">客流量（万人次）</view>
+            <view class="compare-table-cell value-cell highlight-value">{{compareData.current.totalPassengerDisplay}}</view>
+            <view class="compare-table-cell value-cell highlight-value">{{compareData.custom.totalPassengerDisplay}}</view>
+          </view>
+
+          <!-- 天气 -->
+          <view class="compare-table-row data-row" wx:if="{{compareData.current.weather || compareData.custom.weather}}">
+            <view class="compare-table-cell label-cell">天气</view>
+            <view class="compare-table-cell value-cell">{{weatherUtil.getWeatherIcon(compareData.current.weather)}} {{compareData.current.weather || '-'}}</view>
+            <view class="compare-table-cell value-cell">{{weatherUtil.getWeatherIcon(compareData.custom.weather)}} {{compareData.custom.weather || '-'}}</view>
+          </view>
+
+          <!-- 温度 -->
+          <view class="compare-table-row data-row" wx:if="{{(compareData.current.minTemp !== null && compareData.current.maxTemp !== null) || (compareData.custom.minTemp !== null && compareData.custom.maxTemp !== null)}}">
+            <view class="compare-table-cell label-cell">温度</view>
+            <view class="compare-table-cell value-cell">🌡 {{compareData.current.minTemp !== null && compareData.current.maxTemp !== null ? compareData.current.minTemp + '°~' + compareData.current.maxTemp + '°' : '-'}}</view>
+            <view class="compare-table-cell value-cell">🌡 {{compareData.custom.minTemp !== null && compareData.custom.maxTemp !== null ? compareData.custom.minTemp + '°~' + compareData.custom.maxTemp + '°' : '-'}}</view>
+          </view>
+
+          <!-- 限行 -->
+          <view class="compare-table-row data-row" wx:if="{{compareData.current.restrictedPlate || compareData.custom.restrictedPlate}}">
+            <view class="compare-table-cell label-cell">限行</view>
+            <view class="compare-table-cell value-cell">🚗 {{compareData.current.restrictedPlate || '不限行'}}</view>
+            <view class="compare-table-cell value-cell">🚗 {{compareData.custom.restrictedPlate || '不限行'}}</view>
+          </view>
+
+          <!-- 日期类型 -->
+          <view class="compare-table-row data-row" wx:if="{{compareData.current.dayType || compareData.custom.dayType}}">
+            <view class="compare-table-cell label-cell">日期类型</view>
+            <view class="compare-table-cell value-cell">{{compareData.current.dayType || '-'}}</view>
+            <view class="compare-table-cell value-cell">{{compareData.custom.dayType || '-'}}</view>
+          </view>
+
+          <!-- 农历 -->
+          <view class="compare-table-row data-row" wx:if="{{compareData.current.lunarDate || compareData.custom.lunarDate}}">
+            <view class="compare-table-cell label-cell">农历</view>
+            <view class="compare-table-cell value-cell">{{compareData.current.lunarDate || '-'}}</view>
+            <view class="compare-table-cell value-cell">{{compareData.custom.lunarDate || '-'}}</view>
+          </view>
+
+          <!-- 对比结果 -->
+          <view class="compare-table-row data-row result-row" wx:if="{{compareData.custom.change}}">
+            <view class="compare-table-cell label-cell">对比结果</view>
+            <view class="compare-table-cell value-cell result-cell">
+              <view class="result-content">
+                <view class="result-item">
+                  <text class="result-label">差值:</text>
+                  <text class="result-value">{{compareData.custom.change.absolute}} 万人次</text>
+                </view>
+                <view class="result-item">
+                  <text class="result-label">变化:</text>
+                  <text class="result-change {{compareData.custom.change.isUp ? 'up' : 'down'}}">{{compareData.custom.change.isUp ? '↑' : '↓'}} {{compareData.custom.change.value}}%</text>
+                </view>
+              </view>
+            </view>
+            <view class="compare-table-cell value-cell"></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 无数据提示 -->
+      <view wx:if="{{!compareData.current}}" class="error-container">
+        <text class="error-icon">📭</text>
+        <text class="error-text">暂无对比数据</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 历史前十榜单展示 -->
+  <view wx:elif="{{activeTab === 'top10'}}" class="data-container">
+    <!-- 加载状态 -->
+    <view wx:if="{{top10Loading}}" class="loading-container">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">正在加载历史榜单...</text>
+    </view>
+
+    <view wx:else>
+      <!-- 榜单类型切换 -->
+      <view class="top10-type-switch">
+        <view class="top10-type-btn {{top10Type === 'metro' ? 'active' : ''}}" bindtap="switchTop10Type" data-type="metro">
+          <text>纯地铁客流</text>
+        </view>
+        <view class="top10-type-btn {{top10Type === 'total' ? 'active' : ''}}" bindtap="switchTop10Type" data-type="total">
+          <text>全网客运量</text>
+        </view>
+      </view>
+      
+      <!-- 榜单标题 -->
+      <view class="top10-header">
+        <text class="top10-title">历史客流前十榜单</text>
+        <text class="top10-subtitle">（按{{top10Type === 'metro' ? '纯地铁客流' : '全网客运量'}}降序排列）</text>
+      </view>
+
+      <!-- 榜单内容 -->
+      <view class="top10-list">
+        <view wx:if="{{top10List.length === 0}}" class="error-container">
+          <text class="error-icon">📭</text>
+          <text class="error-text">暂无历史榜单数据</text>
+        </view>
+
+        <view class="top10-item" wx:for="{{top10List}}" wx:key="date" data-index="{{index}}" data-date="{{item.date}}" bindtap="onTop10ItemTap">
+          <!-- 排名与奖牌 -->
+          <view class="top10-rank">
+            <text class="rank-number {{index < 3 ? 'medal' : ''}}">
+              {{index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}}
+            </text>
+          </view>
+
+          <!-- 日期与详细信息 -->
+          <view class="top10-info">
+            <view class="top10-main-info">
+              <view class="top10-date-wrapper">
+                <text class="top10-date">{{item.date}}</text>
+                <text class="top10-lunar" wx:if="{{item.lunarDate}}">{{item.lunarDate}}</text>
+              </view>
+              <text class="top10-weekday">{{item.weekday}}</text>
+            </view>
+            <view class="top10-detail-info">
+              <text class="top10-detail-item" wx:if="{{item.dayType}}">{{item.dayType}}</text>
+              <text class="top10-detail-item restricted" wx:if="{{item.restrictedPlate}}">🚗 {{item.restrictedPlate}}</text>
+              <text class="top10-detail-item weather" wx:if="{{item.weather}}">{{weatherUtil.getWeatherIcon(item.weather)}} {{item.weather}}</text>
+              <text class="top10-detail-item temp" wx:if="{{item.minTemp !== null && item.maxTemp !== null}}">🌡 {{item.minTemp}}°~{{item.maxTemp}}°</text>
+            </view>
+          </view>
+
+          <!-- 客流数值 -->
+          <view class="top10-passenger">
+            <text class="passenger-value">{{item.totalPassenger}}<text class="passenger-unit">万</text></text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部说明 -->
+  <view class="footer">
+    <image class="footer-main-logo" src="/images/logo.png" mode="aspectFit"></image>
+    <text class="footer-brand">蓉城客流</text>
+    <text class="footer-desc">数据来源：成都地铁 | 单位：万人次</text>
+  </view>
+
+  <!-- 版本更新提示弹窗 -->
+  <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
+    <view class="version-tip-modal" catchtap="closeVersionTip">
+      <view class="version-tip-icon">🚀</view>
+      <view class="version-tip-title">新版本 2.1.7</view>
+      <view class="version-tip-content">
+        <view class="version-tip-item">⚡ 优化数据库查询速度</view>
+        <view class="version-tip-item">🏆 纯地铁榜单查询更快</view>
+        <view class="version-tip-item">📊 升级数据库架构</view>
+        <view class="version-tip-item">🎨 优化对比结果显示样式</view>
+      </view>
+      <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
+      <view class="version-tip-hint">点击任意位置关闭</view>
+    </view>
+  </view>
+
+  <!-- 历史榜单详情模态框 -->
+  <view class="modal-overlay" wx:if="{{showDetailModal}}" bindtap="closeDetailModal">
+    <view class="modal-content" catchtap="preventClose">
+      <!-- 模态框头部 -->
+      <view class="modal-header">
+        <text class="modal-title">{{detailModalData.date}} 客流明细</text>
+        <view class="modal-close" bindtap="closeDetailModal">✕</view>
+      </view>
+
+      <!-- 模态框内容 -->
+      <scroll-view class="modal-body" scroll-y enable-back-to-top>
+        <!-- 加载状态 -->
+        <view wx:if="{{detailModalLoading}}" class="loading-container">
+          <view class="loading-spinner"></view>
+          <text class="loading-text">正在加载...</text>
+        </view>
+
+        <!-- 数据展示 -->
+        <view wx:else>
+          <!-- 基本信息 -->
+          <view class="info-card" wx:if="{{detailModalData.passengerData}}">
+            <view class="info-row">
+              <view class="info-item">
+                <text class="info-label">日期类型</text>
+                <text class="info-value">{{detailModalData.passengerData.dayType}}</text>
+              </view>
+              <view class="info-item">
+                <text class="info-label">农历</text>
+                <text class="info-value">{{detailModalData.passengerData.lunarDate}}</text>
+              </view>
+              <view class="info-item">
+                <text class="info-label">星期</text>
+                <text class="info-value">{{detailModalData.passengerData.weekday}}</text>
+              </view>
+            </view>
+            <view class="info-row">
+              <view class="info-item">
+                <text class="info-label">天气</text>
+                <text class="info-value">{{weatherUtil.getWeatherIcon(detailModalData.passengerData.weather)}} {{detailModalData.passengerData.weather}}</text>
+              </view>
+              <view class="info-item">
+                <text class="info-label">气温</text>
+                <text class="info-value">{{detailModalData.passengerData.minTemp}}°~{{detailModalData.passengerData.maxTemp}}°</text>
+              </view>
+              <view class="info-item">
+                <text class="info-label">限行</text>
+                <text class="info-value">{{detailModalData.passengerData.restrictedPlate}}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 总客流 -->
+          <view class="total-card" wx:if="{{detailModalData.passengerData}}">
+            <text class="total-label">全网客运量</text>
+            <view class="total-value-wrapper">
+              <text class="total-value">{{detailModalData.passengerData.totalPassengerDisplay || detailModalData.passengerData.totalPassenger}}</text>
+              <text class="total-unit">万人次</text>
+            </view>
+          </view>
+
+          <!-- 分线路客流列表 -->
+          <view class="line-list" wx:if="{{detailModalData.lineList && detailModalData.lineList.length > 0}}">
+            <view class="line-list-header">
+              <text class="line-list-title">各线路客流明细</text>
+              <text class="line-list-subtitle">（按客流量降序排列）</text>
+            </view>
+            
+            <view class="line-item" wx:for="{{detailModalData.lineList}}" wx:key="key">
+              <view class="line-info">
+                <view class="line-badge" style="background-color: {{item.color}};">
+                  <text class="line-name">{{item.name}}</text>
+                </view>
+              </view>
+              <view class="line-bar-wrapper">
+                <view class="line-bar" style="width: {{detailModalData.lineList[0].passenger > 0 ? item.passenger / detailModalData.lineList[0].passenger * 100 : 0}}%; background-color: {{item.color}};"></view>
+              </view>
+              <view class="line-passenger">
+                <text class="passenger-value">{{item.displayPassenger}}<text class="passenger-unit">万</text></text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

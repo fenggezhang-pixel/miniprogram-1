@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/index/index" 
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#0066cc", 
+    "navigationBarTitleText": "成都地铁客流查询",
+    "navigationBarTextStyle": "white",
+    "enablePullDownRefresh": false 
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

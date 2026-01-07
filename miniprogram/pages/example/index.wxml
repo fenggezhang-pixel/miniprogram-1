@@ -1,0 +1,4 @@
+<!--pages/example/index.wxml-->
+<view class="container">
+  <text>pages/example/index.wxml</text>
+</view>

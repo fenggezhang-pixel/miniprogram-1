@@ -1,0 +1,44 @@
+// 根据天气文字返回对应的天气图标
+function getWeatherIcon(weather) {
+  if (!weather) return '🌤'
+  
+  var w = weather.toString()
+  
+  // 优先匹配特殊天气
+  if (w.indexOf('雷') !== -1 || w.indexOf('暴雨') !== -1) {
+    return '⛈️'
+  }
+  if (w.indexOf('大雨') !== -1) {
+    return '🌧️'
+  }
+  if (w.indexOf('中雨') !== -1) {
+    return '🌧️'
+  }
+  if (w.indexOf('小雨') !== -1 || w.indexOf('阵雨') !== -1) {
+    return '🌦️'
+  }
+  if (w.indexOf('雨') !== -1) {
+    return '🌧️'
+  }
+  if (w.indexOf('雪') !== -1) {
+    return '❄️'
+  }
+  if (w.indexOf('雾') !== -1 || w.indexOf('霾') !== -1) {
+    return '🌫️'
+  }
+  if (w.indexOf('阴') !== -1) {
+    return '☁️'
+  }
+  if (w.indexOf('多云') !== -1) {
+    return '⛅'
+  }
+  if (w.indexOf('晴') !== -1) {
+    return '☀️'
+  }
+  
+  return '🌤'
+}
+
+module.exports = {
+  getWeatherIcon: getWeatherIcon
+}
