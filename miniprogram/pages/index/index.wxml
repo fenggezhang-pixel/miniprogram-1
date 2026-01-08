@@ -114,9 +114,6 @@
     <view class="chart-card">
       <view class="chart-header">
         <text class="chart-title">各线路客流量（万人次）</text>
-        <view class="save-btn" bindtap="saveChart" data-chart="bar">
-          <text>保存图片</text>
-        </view>
       </view>
       <view class="chart-container bar-chart-container" bindtap="openBarChartFullscreen">
         <canvas type="2d" id="barChart" class="chart-canvas bar-canvas"></canvas>
@@ -152,6 +149,15 @@
         </view>
       </view>
     </view>
+
+    <!-- 一键分享按钮 -->
+    <view class="generate-image-section">
+      <button class="generate-image-btn" bindtap="generateLongImage" disabled="{{generatingImage}}">
+        <text class="generate-image-icon">📤</text>
+        <text>{{generatingImage ? '正在生成...' : '一键分享'}}</text>
+      </button>
+      <text class="generate-image-hint">生成图片保存到相册</text>
+    </view>
   </view>
 
   <!-- 柱状图放大查看 -->
@@ -175,9 +181,6 @@
           <text class="chart-fullscreen-title">各线路客流量</text>
           <text class="chart-fullscreen-subtitle">（{{selectedDate}}）</text>
         </view>
-        <view class="save-btn" bindtap="saveChart" data-chart="bar-full">
-          <text>保存图片</text>
-        </view>
       </view>
       <view class="chart-fullscreen-body">
         <canvas type="2d" id="barChartFull" class="chart-canvas bar-canvas-full"></canvas>
@@ -192,9 +195,6 @@
     <view class="chart-card weekly-chart">
       <view class="chart-header">
         <text class="chart-title">近7日客流趋势</text>
-        <view class="save-btn" bindtap="saveChart" data-chart="line">
-          <text>保存图片</text>
-        </view>
       </view>
       <view class="chart-container line-chart-container">
         <canvas type="2d" id="lineChart" class="chart-canvas line-canvas"></canvas>
@@ -453,14 +453,18 @@
     <text class="footer-desc">数据来源：成都地铁 | 单位：万人次</text>
   </view>
 
+  <!-- 用于生成长图的隐藏canvas -->
+  <canvas type="2d" id="longImageCanvas" class="long-image-canvas"></canvas>
+
   <!-- 版本更新提示弹窗 -->
   <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
     <view class="version-tip-modal" catchtap="closeVersionTip">
       <view class="version-tip-icon">🚀</view>
-      <view class="version-tip-title">新版本 2.1.8</view>
+      <view class="version-tip-title">新版本 2.1.9</view>
       <view class="version-tip-content">
+        <view class="version-tip-item">📸 新增一键分享功能，生成精美图片</view>
         <view class="version-tip-item">📋 历史明细新增纯地铁客流显示</view>
-        <view class="version-tip-item">💾 优化保存图片失败后的权限引导</view>
+        <view class="version-tip-item">💾 优化保存图片权限处理</view>
       </view>
       <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
       <view class="version-tip-hint">点击任意位置关闭</view>

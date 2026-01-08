@@ -124,7 +124,9 @@ Page({
     // 柱状图放大查看
     showBarChartFullscreen: false,
     // 版本更新弹窗
-    showVersionTip: false
+    showVersionTip: false,
+    // 长图生成状态
+    generatingImage: false
   },
 
   onLoad(options) {
@@ -160,7 +162,7 @@ Page({
   
   // 检查并显示版本更新提示
   checkVersionTip() {
-    const versionKey = 'version_tip_2.1.8_shown'
+    const versionKey = 'version_tip_2.1.9_shown'
     const hasShown = wx.getStorageSync(versionKey)
     if (!hasShown) {
       this.setData({ showVersionTip: true })
@@ -1036,6 +1038,451 @@ Page({
     this.setData({ showBarChartFullscreen: false })
   },
 
+  // 生成分享长图
+  generateLongImage() {
+    if (this.data.generatingImage) return
+    
+    const { passengerData, lineList, selectedDate } = this.data
+    if (!passengerData || !lineList || lineList.length === 0) {
+      wx.showToast({ title: '暂无数据可生成', icon: 'none' })
+      return
+    }
+
+    this.setData({ generatingImage: true })
+    wx.showLoading({ title: '正在生成...', mask: true })
+
+    // 先检查隐私协议和权限
+    this.checkPrivacyAndPermission(() => {
+      this.doGenerateLongImage()
+    }, () => {
+      this.setData({ generatingImage: false })
+      wx.hideLoading()
+    })
+  },
+
+  // 检查隐私协议和相册权限
+  checkPrivacyAndPermission(onSuccess, onFail) {
+    // 检查隐私协议
+    if (wx.getPrivacySetting) {
+      wx.getPrivacySetting({
+        success: (privacyRes) => {
+          if (privacyRes.needAuthorization) {
+            wx.requirePrivacyAuthorize({
+              success: () => this.checkAlbumAuth(onSuccess, onFail),
+              fail: () => {
+                wx.showToast({ title: '需要同意隐私协议', icon: 'none' })
+                onFail()
+              }
+            })
+          } else {
+            this.checkAlbumAuth(onSuccess, onFail)
+          }
+        },
+        fail: () => this.checkAlbumAuth(onSuccess, onFail)
+      })
+    } else {
+      this.checkAlbumAuth(onSuccess, onFail)
+    }
+  },
+
+  // 检查相册权限
+  checkAlbumAuth(onSuccess, onFail) {
+    wx.getSetting({
+      success: (res) => {
+        const hasAuth = res.authSetting['scope.writePhotosAlbum']
+        if (hasAuth === true) {
+          onSuccess()
+        } else if (hasAuth === false) {
+          wx.showModal({
+            title: '需要相册权限',
+            content: '保存图片需要您授权访问相册，请在设置中开启',
+            confirmText: '去设置',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                wx.openSetting({
+                  success: (openRes) => {
+                    if (openRes.authSetting['scope.writePhotosAlbum']) {
+                      onSuccess()
+                    } else {
+                      onFail()
+                    }
+                  }
+                })
+              } else {
+                onFail()
+              }
+            }
+          })
+        } else {
+          wx.authorize({
+            scope: 'scope.writePhotosAlbum',
+            success: () => onSuccess(),
+            fail: () => {
+              wx.showModal({
+                title: '需要相册权限',
+                content: '保存图片需要您授权访问相册',
+                confirmText: '去设置',
+                success: (modalRes) => {
+                  if (modalRes.confirm) {
+                    wx.openSetting({
+                      success: (openRes) => {
+                        if (openRes.authSetting['scope.writePhotosAlbum']) {
+                          onSuccess()
+                        } else {
+                          onFail()
+                        }
+                      }
+                    })
+                  } else {
+                    onFail()
+                  }
+                }
+              })
+            }
+          })
+        }
+      },
+      fail: () => onFail()
+    })
+  },
+
+  // 执行长图生成
+  doGenerateLongImage() {
+    const { passengerData, lineList, selectedDate } = this.data
+    const dpr = wx.getSystemInfoSync().pixelRatio || 2
+    
+    // 计算画布尺寸
+    const canvasWidth = 750
+    const lineItemHeight = 90
+    const headerHeight = 320
+    const infoCardHeight = 180
+    const totalCardHeight = 200
+    const lineListHeaderHeight = 90
+    const footerHeight = 140
+    const padding = 40
+    
+    const canvasHeight = headerHeight + infoCardHeight + totalCardHeight + 
+                         lineListHeaderHeight + (lineList.length * lineItemHeight) + 
+                         footerHeight + padding * 3
+
+    wx.createSelectorQuery()
+      .select('#longImageCanvas')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        if (!res[0] || !res[0].node) {
+          wx.hideLoading()
+          this.setData({ generatingImage: false })
+          wx.showToast({ title: '画布初始化失败', icon: 'none' })
+          return
+        }
+
+        const canvas = res[0].node
+        const ctx = canvas.getContext('2d')
+        
+        // 设置画布尺寸
+        canvas.width = canvasWidth * dpr
+        canvas.height = canvasHeight * dpr
+        ctx.scale(dpr, dpr)
+
+        // 加载 logo 图片
+        const logoImg = canvas.createImage()
+        logoImg.src = '/images/logo.png'
+        
+        logoImg.onload = () => {
+          this.drawLongImageContent(ctx, canvas, logoImg, canvasWidth, canvasHeight, {
+            passengerData, lineList, selectedDate, padding,
+            headerHeight, infoCardHeight, totalCardHeight, lineListHeaderHeight, lineItemHeight
+          })
+        }
+        
+        logoImg.onerror = () => {
+          // logo 加载失败也继续绘制
+          this.drawLongImageContent(ctx, canvas, null, canvasWidth, canvasHeight, {
+            passengerData, lineList, selectedDate, padding,
+            headerHeight, infoCardHeight, totalCardHeight, lineListHeaderHeight, lineItemHeight
+          })
+        }
+      })
+  },
+
+  // 绘制长图内容
+  drawLongImageContent(ctx, canvas, logoImg, canvasWidth, canvasHeight, data) {
+    const { passengerData, lineList, selectedDate, padding,
+            headerHeight, infoCardHeight, totalCardHeight, lineListHeaderHeight, lineItemHeight } = data
+
+    // 绘制背景渐变
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight)
+    gradient.addColorStop(0, '#e8f4fc')
+    gradient.addColorStop(0.5, '#f5f8fa')
+    gradient.addColorStop(1, '#f0f2f5')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+    let y = padding
+
+    // 绘制标题区域背景卡片
+    ctx.fillStyle = '#fff'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)'
+    ctx.shadowBlur = 20
+    ctx.shadowOffsetY = 4
+    this.drawRoundRect(ctx, padding, y, canvasWidth - padding * 2, headerHeight - 40, 24)
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetY = 0
+
+    // 绘制 logo
+    if (logoImg) {
+      const logoSize = 70
+      ctx.drawImage(logoImg, canvasWidth / 2 - logoSize / 2, y + 25, logoSize, logoSize)
+    }
+
+    // 绘制标题
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#1296db'
+    ctx.font = 'bold 44px sans-serif'
+    ctx.fillText('蓉城客流', canvasWidth / 2, y + 130)
+    
+    ctx.fillStyle = '#888'
+    ctx.font = '26px sans-serif'
+    ctx.fillText('成都地铁客流查询', canvasWidth / 2, y + 165)
+    
+    // 日期
+    ctx.fillStyle = '#333'
+    ctx.font = 'bold 38px sans-serif'
+    ctx.fillText(selectedDate, canvasWidth / 2, y + 220)
+    
+    // 日期类型、星期
+    ctx.fillStyle = '#999'
+    ctx.font = '24px sans-serif'
+    const infoText = `${passengerData.weekday} · ${passengerData.dayType} · ${passengerData.lunarDate || ''}`
+    ctx.fillText(infoText, canvasWidth / 2, y + 255)
+    
+    y += headerHeight
+
+    // 绘制基本信息卡片
+    ctx.fillStyle = '#fff'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.06)'
+    ctx.shadowBlur = 16
+    ctx.shadowOffsetY = 3
+    this.drawRoundRect(ctx, padding, y, canvasWidth - padding * 2, infoCardHeight - 30, 20)
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetY = 0
+    
+    // 基本信息内容
+    const infoItems = [
+      { label: '天气', value: `${passengerData.weather || '-'}` },
+      { label: '气温', value: `${passengerData.minTemp || '-'}°~${passengerData.maxTemp || '-'}°` },
+      { label: '限行', value: passengerData.restrictedPlate || '-' }
+    ]
+    
+    const itemWidth = (canvasWidth - padding * 2) / 3
+    infoItems.forEach((item, index) => {
+      const x = padding + index * itemWidth + itemWidth / 2
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#999'
+      ctx.font = '24px sans-serif'
+      ctx.fillText(item.label, x, y + 50)
+      ctx.fillStyle = '#333'
+      ctx.font = 'bold 32px sans-serif'
+      ctx.fillText(item.value, x, y + 95)
+    })
+    
+    y += infoCardHeight
+
+    // 绘制总客流卡片
+    ctx.shadowColor = 'rgba(100, 140, 170, 0.25)'
+    ctx.shadowBlur = 20
+    ctx.shadowOffsetY = 6
+    const cardGradient = ctx.createLinearGradient(padding, y, canvasWidth - padding, y + totalCardHeight - 30)
+    cardGradient.addColorStop(0, '#7a9eb8')
+    cardGradient.addColorStop(1, '#5c849e')
+    ctx.fillStyle = cardGradient
+    this.drawRoundRect(ctx, padding, y, canvasWidth - padding * 2, totalCardHeight - 30, 24)
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetY = 0
+    
+    // 左侧纯地铁客流
+    ctx.textAlign = 'center'
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.font = '26px sans-serif'
+    ctx.fillText('纯地铁客流', canvasWidth / 4 + padding / 2, y + 55)
+    ctx.fillStyle = '#fff'
+    ctx.font = 'bold 56px sans-serif'
+    ctx.fillText(passengerData.metroOnlyPassengerDisplay || '0.00', canvasWidth / 4 + padding / 2, y + 120)
+    ctx.font = '22px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.fillText('万人次', canvasWidth / 4 + padding / 2, y + 150)
+    
+    // 分隔线
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2, y + 30)
+    ctx.lineTo(canvasWidth / 2, y + totalCardHeight - 60)
+    ctx.stroke()
+    
+    // 右侧全网客运量
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.font = '26px sans-serif'
+    ctx.fillText('全网客运量', canvasWidth * 3 / 4 - padding / 2, y + 55)
+    ctx.fillStyle = '#fff'
+    ctx.font = 'bold 56px sans-serif'
+    ctx.fillText(passengerData.totalPassengerDisplay || '0.00', canvasWidth * 3 / 4 - padding / 2, y + 120)
+    ctx.font = '22px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.fillText('万人次', canvasWidth * 3 / 4 - padding / 2, y + 150)
+    
+    y += totalCardHeight
+
+    // 绘制线路列表标题
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#333'
+    ctx.font = 'bold 32px sans-serif'
+    ctx.fillText('各线路客流明细', padding + 10, y + 45)
+    ctx.fillStyle = '#999'
+    ctx.font = '22px sans-serif'
+    ctx.fillText('（按客流量降序，单位：万人次）', padding + 220, y + 45)
+    
+    y += lineListHeaderHeight
+
+    // 绘制线路列表背景卡片
+    const listHeight = lineList.length * lineItemHeight
+    ctx.fillStyle = '#fff'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.06)'
+    ctx.shadowBlur = 16
+    ctx.shadowOffsetY = 3
+    this.drawRoundRect(ctx, padding, y - 10, canvasWidth - padding * 2, listHeight + 20, 20)
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetY = 0
+
+    // 绘制各线路
+    const maxPassenger = lineList[0]?.passenger || 1
+    lineList.forEach((item, index) => {
+      const itemY = y + index * lineItemHeight
+      
+      // 分隔线
+      if (index > 0) {
+        ctx.strokeStyle = '#f0f0f0'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(padding + 20, itemY)
+        ctx.lineTo(canvasWidth - padding - 20, itemY)
+        ctx.stroke()
+      }
+      
+      // 线路名称徽章
+      ctx.fillStyle = item.color
+      this.drawRoundRect(ctx, padding + 20, itemY + 25, 100, 42, 10)
+      ctx.fill()
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 26px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(item.name, padding + 70, itemY + 55)
+      
+      // 进度条
+      const barWidth = 360
+      const barX = padding + 145
+      ctx.fillStyle = '#f0f0f0'
+      this.drawRoundRect(ctx, barX, itemY + 32, barWidth, 28, 14)
+      ctx.fill()
+      
+      const fillWidth = Math.max(28, (item.passenger / maxPassenger) * barWidth)
+      ctx.fillStyle = item.color
+      this.drawRoundRect(ctx, barX, itemY + 32, fillWidth, 28, 14)
+      ctx.fill()
+      
+      // 客流数值
+      ctx.textAlign = 'right'
+      ctx.fillStyle = '#333'
+      ctx.font = 'bold 34px sans-serif'
+      ctx.fillText(item.displayPassenger, canvasWidth - padding - 25, itemY + 58)
+    })
+    
+    y += listHeight + padding + 20
+
+    // 绘制底部水印区域
+    // logo
+    if (logoImg) {
+      const footerLogoSize = 36
+      ctx.globalAlpha = 0.6
+      ctx.drawImage(logoImg, canvasWidth / 2 - 130, y + 12, footerLogoSize, footerLogoSize)
+      ctx.globalAlpha = 1
+    }
+    
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#999'
+    ctx.font = '24px sans-serif'
+    ctx.fillText('蓉城客流', canvasWidth / 2 - 85, y + 38)
+    
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#bbb'
+    ctx.font = '22px sans-serif'
+    ctx.fillText('数据来源：成都地铁', canvasWidth / 2, y + 75)
+
+    // 导出并保存图片
+    setTimeout(() => {
+      wx.canvasToTempFilePath({
+        canvas: canvas,
+        x: 0,
+        y: 0,
+        width: canvasWidth,
+        height: canvasHeight,
+        destWidth: canvasWidth * 2,
+        destHeight: canvasHeight * 2,
+        fileType: 'png',
+        quality: 1,
+        success: (tempRes) => {
+          wx.saveImageToPhotosAlbum({
+            filePath: tempRes.tempFilePath,
+            success: () => {
+              wx.hideLoading()
+              this.setData({ generatingImage: false })
+              wx.showToast({ title: '已保存到相册', icon: 'success' })
+            },
+            fail: (err) => {
+              wx.hideLoading()
+              this.setData({ generatingImage: false })
+              console.log('保存失败:', err)
+              wx.showModal({
+                title: '保存失败',
+                content: err.errMsg || '请重试',
+                showCancel: false
+              })
+            }
+          })
+        },
+        fail: (err) => {
+          wx.hideLoading()
+          this.setData({ generatingImage: false })
+          console.log('生成图片失败:', err)
+          wx.showToast({ title: '生成失败，请重试', icon: 'none' })
+        }
+      })
+    }, 100)
+  },
+
+  // 绘制圆角矩形
+  drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath()
+    ctx.moveTo(x + r, y)
+    ctx.lineTo(x + w - r, y)
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+    ctx.lineTo(x + w, y + h - r)
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+    ctx.lineTo(x + r, y + h)
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+    ctx.lineTo(x, y + r)
+    ctx.quadraticCurveTo(x, y, x + r, y)
+    ctx.closePath()
+  },
+
   drawBarChart(options = {}) {
     const { canvasId = 'barChart', showValues = false, retryCount = 0 } = options
     const lineList = this.data.lineList
@@ -1593,12 +2040,49 @@ Page({
       canvasId = '#barChartFull'
     }
     
-    // 先检查相册权限
+    // 先检查隐私协议授权（正式版需要）
+    if (wx.getPrivacySetting) {
+      wx.getPrivacySetting({
+        success: (privacyRes) => {
+          console.log('隐私协议状态:', privacyRes)
+          if (privacyRes.needAuthorization) {
+            // 需要用户同意隐私协议
+            wx.requirePrivacyAuthorize({
+              success: () => {
+                // 用户同意了隐私协议，继续检查相册权限
+                this.checkAlbumPermission(canvasId)
+              },
+              fail: () => {
+                wx.showToast({ title: '需要同意隐私协议', icon: 'none' })
+              }
+            })
+          } else {
+            // 已同意隐私协议，检查相册权限
+            this.checkAlbumPermission(canvasId)
+          }
+        },
+        fail: () => {
+          // 获取隐私设置失败，直接尝试保存
+          this.checkAlbumPermission(canvasId)
+        }
+      })
+    } else {
+      // 低版本不支持隐私API，直接检查相册权限
+      this.checkAlbumPermission(canvasId)
+    }
+  },
+
+  // 检查相册权限
+  checkAlbumPermission(canvasId) {
     wx.getSetting({
       success: (settingRes) => {
+        console.log('权限状态:', settingRes.authSetting)
         const hasAuth = settingRes.authSetting['scope.writePhotosAlbum']
         
-        if (hasAuth === false) {
+        if (hasAuth === true) {
+          // 已有权限，直接保存
+          this.doSaveChart(canvasId)
+        } else if (hasAuth === false) {
           // 用户之前拒绝过授权，引导去设置页面开启
           wx.showModal({
             title: '需要相册权限',
@@ -1609,7 +2093,6 @@ Page({
                 wx.openSetting({
                   success: (openSettingRes) => {
                     if (openSettingRes.authSetting['scope.writePhotosAlbum']) {
-                      // 用户在设置中开启了权限，继续保存
                       this.doSaveChart(canvasId)
                     }
                   }
@@ -1618,11 +2101,38 @@ Page({
             }
           })
         } else {
-          // 有权限或首次请求，直接保存（首次会自动弹出授权框）
-          this.doSaveChart(canvasId)
+          // 首次请求，使用 wx.authorize 主动请求权限
+          wx.authorize({
+            scope: 'scope.writePhotosAlbum',
+            success: () => {
+              console.log('授权成功')
+              this.doSaveChart(canvasId)
+            },
+            fail: (err) => {
+              console.log('授权失败:', err)
+              // 用户拒绝了授权，引导去设置
+              wx.showModal({
+                title: '需要相册权限',
+                content: '保存图片需要您授权访问相册',
+                confirmText: '去设置',
+                success: (modalRes) => {
+                  if (modalRes.confirm) {
+                    wx.openSetting({
+                      success: (openSettingRes) => {
+                        if (openSettingRes.authSetting['scope.writePhotosAlbum']) {
+                          this.doSaveChart(canvasId)
+                        }
+                      }
+                    })
+                  }
+                }
+              })
+            }
+          })
         }
       },
-      fail: () => {
+      fail: (err) => {
+        console.log('获取设置失败:', err)
         wx.showToast({ title: '获取权限失败', icon: 'none' })
       }
     })
@@ -1630,7 +2140,7 @@ Page({
 
   // 执行保存图片操作
   doSaveChart(canvasId) {
-    wx.showLoading({ title: '正在保存...' })
+    wx.showLoading({ title: '正在保存...', mask: true })
     
     wx.createSelectorQuery()
       .select(canvasId)
@@ -1643,9 +2153,21 @@ Page({
         }
         
         const canvas = res[0].node
+        const width = res[0].width
+        const height = res[0].height
+        
         wx.canvasToTempFilePath({
           canvas: canvas,
+          x: 0,
+          y: 0,
+          width: width,
+          height: height,
+          destWidth: width * 2,
+          destHeight: height * 2,
+          fileType: 'png',
+          quality: 1,
           success: (tempRes) => {
+            console.log('临时文件路径:', tempRes.tempFilePath)
             wx.saveImageToPhotosAlbum({
               filePath: tempRes.tempFilePath,
               success: () => {
@@ -1654,27 +2176,53 @@ Page({
               },
               fail: (err) => {
                 wx.hideLoading()
-                // 检查是否是用户拒绝授权
-                if (err.errMsg && err.errMsg.includes('auth deny')) {
+                console.log('保存到相册失败:', JSON.stringify(err))
+                // 检查是否是用户拒绝授权（兼容多种错误信息格式）
+                const errMsg = (err.errMsg || '').toLowerCase()
+                const isAuthDeny = errMsg.includes('auth deny') || 
+                                   errMsg.includes('authorize') || 
+                                   errMsg.includes('deny') ||
+                                   errMsg.includes('cancel') ||
+                                   errMsg.includes('privacy') ||
+                                   err.errno === 103
+                
+                if (isAuthDeny) {
                   wx.showModal({
-                    title: '保存失败',
-                    content: '您拒绝了相册权限，无法保存图片。是否前往设置开启？',
+                    title: '需要相册权限',
+                    content: '保存图片需要您授权访问相册，请在设置中开启',
                     confirmText: '去设置',
+                    cancelText: '取消',
                     success: (modalRes) => {
                       if (modalRes.confirm) {
-                        wx.openSetting()
+                        wx.openSetting({
+                          success: (openSettingRes) => {
+                            if (openSettingRes.authSetting['scope.writePhotosAlbum']) {
+                              this.doSaveChart(canvasId)
+                            }
+                          }
+                        })
                       }
                     }
                   })
                 } else {
-                  wx.showToast({ title: '保存失败，请重试', icon: 'none' })
+                  // 显示详细错误信息便于排查
+                  wx.showModal({
+                    title: '保存失败',
+                    content: err.errMsg || '未知错误，请重试',
+                    showCancel: false
+                  })
                 }
               }
             })
           },
-          fail: () => {
+          fail: (err) => {
             wx.hideLoading()
-            wx.showToast({ title: '图片生成失败', icon: 'none' })
+            console.log('图片生成失败:', JSON.stringify(err))
+            wx.showModal({
+              title: '图片生成失败',
+              content: err.errMsg || '请重试',
+              showCancel: false
+            })
           }
         })
       })
