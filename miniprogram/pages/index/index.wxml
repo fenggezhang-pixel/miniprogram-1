@@ -457,12 +457,10 @@
   <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
     <view class="version-tip-modal" catchtap="closeVersionTip">
       <view class="version-tip-icon">🚀</view>
-      <view class="version-tip-title">新版本 2.1.7</view>
+      <view class="version-tip-title">新版本 2.1.8</view>
       <view class="version-tip-content">
-        <view class="version-tip-item">⚡ 优化数据库查询速度</view>
-        <view class="version-tip-item">🏆 纯地铁榜单查询更快</view>
-        <view class="version-tip-item">📊 升级数据库架构</view>
-        <view class="version-tip-item">🎨 优化对比结果显示样式</view>
+        <view class="version-tip-item">📋 历史明细新增纯地铁客流显示</view>
+        <view class="version-tip-item">💾 优化保存图片失败后的权限引导</view>
       </view>
       <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
       <view class="version-tip-hint">点击任意位置关闭</view>
@@ -520,12 +518,27 @@
             </view>
           </view>
 
-          <!-- 总客流 -->
+          <!-- 总客流卡片 - 左右分栏 -->
           <view class="total-card" wx:if="{{detailModalData.passengerData}}">
-            <text class="total-label">全网客运量</text>
-            <view class="total-value-wrapper">
-              <text class="total-value">{{detailModalData.passengerData.totalPassengerDisplay || detailModalData.passengerData.totalPassenger}}</text>
-              <text class="total-unit">万人次</text>
+            <view class="total-card-split">
+              <!-- 左侧：纯地铁客流 -->
+              <view class="total-card-item metro-only">
+                <text class="total-item-label">纯地铁客流</text>
+                <view class="total-item-value-wrapper">
+                  <text class="total-item-value">{{detailModalData.passengerData.metroOnlyPassengerDisplay || '0.00'}}</text>
+                </view>
+              </view>
+              
+              <!-- 分隔线 -->
+              <view class="total-card-divider"></view>
+              
+              <!-- 右侧：全网客运量 -->
+              <view class="total-card-item total-all">
+                <text class="total-item-label">全网客运量</text>
+                <view class="total-item-value-wrapper">
+                  <text class="total-item-value">{{detailModalData.passengerData.totalPassengerDisplay || detailModalData.passengerData.totalPassenger}}</text>
+                </view>
+              </view>
             </view>
           </view>
 

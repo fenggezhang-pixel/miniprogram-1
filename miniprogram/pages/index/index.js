@@ -160,7 +160,7 @@ Page({
   
   // 检查并显示版本更新提示
   checkVersionTip() {
-    const versionKey = 'version_tip_2.1.7_shown'
+    const versionKey = 'version_tip_2.1.8_shown'
     const hasShown = wx.getStorageSync(versionKey)
     if (!hasShown) {
       this.setData({ showVersionTip: true })
@@ -515,6 +515,19 @@ Page({
           record.totalPassengerDisplay = totalPassengerValue.toFixed(2)
           record.totalPassenger = totalPassengerValue
         }
+
+        // 计算纯地铁客流（优先使用数据库字段，否则用总客流减去蓉2号线）
+        const rong2Passenger = this.getLineRong2Passenger(record)
+        const totalPassengerValue = record.totalPassenger || 0
+        let metroOnlyPassenger
+        const pureMetroValue = record.pureMetroPassenger
+        if (pureMetroValue !== undefined && pureMetroValue !== null && pureMetroValue !== '') {
+          metroOnlyPassenger = parseFloat(pureMetroValue)
+        } else {
+          metroOnlyPassenger = Math.max(0, totalPassengerValue - rong2Passenger)
+        }
+        record.metroOnlyPassenger = metroOnlyPassenger
+        record.metroOnlyPassengerDisplay = metroOnlyPassenger.toFixed(2)
 
         this.setData({
           detailModalLoading: false,
@@ -1580,26 +1593,89 @@ Page({
       canvasId = '#barChartFull'
     }
     
+    // 先检查相册权限
+    wx.getSetting({
+      success: (settingRes) => {
+        const hasAuth = settingRes.authSetting['scope.writePhotosAlbum']
+        
+        if (hasAuth === false) {
+          // 用户之前拒绝过授权，引导去设置页面开启
+          wx.showModal({
+            title: '需要相册权限',
+            content: '保存图片需要您授权访问相册，请在设置中开启',
+            confirmText: '去设置',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                wx.openSetting({
+                  success: (openSettingRes) => {
+                    if (openSettingRes.authSetting['scope.writePhotosAlbum']) {
+                      // 用户在设置中开启了权限，继续保存
+                      this.doSaveChart(canvasId)
+                    }
+                  }
+                })
+              }
+            }
+          })
+        } else {
+          // 有权限或首次请求，直接保存（首次会自动弹出授权框）
+          this.doSaveChart(canvasId)
+        }
+      },
+      fail: () => {
+        wx.showToast({ title: '获取权限失败', icon: 'none' })
+      }
+    })
+  },
+
+  // 执行保存图片操作
+  doSaveChart(canvasId) {
+    wx.showLoading({ title: '正在保存...' })
+    
     wx.createSelectorQuery()
       .select(canvasId)
       .fields({ node: true, size: true })
       .exec((res) => {
-        if (!res[0]) return
+        if (!res[0] || !res[0].node) {
+          wx.hideLoading()
+          wx.showToast({ title: '图表未加载完成', icon: 'none' })
+          return
+        }
         
         const canvas = res[0].node
         wx.canvasToTempFilePath({
           canvas: canvas,
-          success: (res) => {
+          success: (tempRes) => {
             wx.saveImageToPhotosAlbum({
-              filePath: res.tempFilePath,
+              filePath: tempRes.tempFilePath,
               success: () => {
+                wx.hideLoading()
                 wx.showToast({ title: '已保存到相册', icon: 'success' })
               },
-              fail: () => {
-                wx.showToast({ title: '保存失败', icon: 'none' })
-  }
+              fail: (err) => {
+                wx.hideLoading()
+                // 检查是否是用户拒绝授权
+                if (err.errMsg && err.errMsg.includes('auth deny')) {
+                  wx.showModal({
+                    title: '保存失败',
+                    content: '您拒绝了相册权限，无法保存图片。是否前往设置开启？',
+                    confirmText: '去设置',
+                    success: (modalRes) => {
+                      if (modalRes.confirm) {
+                        wx.openSetting()
+                      }
+                    }
+                  })
+                } else {
+                  wx.showToast({ title: '保存失败，请重试', icon: 'none' })
+                }
+              }
             })
-  }
+          },
+          fail: () => {
+            wx.hideLoading()
+            wx.showToast({ title: '图片生成失败', icon: 'none' })
+          }
         })
       })
   },
