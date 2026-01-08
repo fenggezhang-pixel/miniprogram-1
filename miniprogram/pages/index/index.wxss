@@ -966,10 +966,10 @@
 }
 
 .top10-type-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8fa4b8 0%, #7a9eb8 100%);
   color: #fff;
   font-weight: 500;
-  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(143, 164, 184, 0.35);
 }
 
 .top10-header {
@@ -1053,6 +1053,13 @@
   align-items: flex-start;
 }
 
+.top10-date-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
 .top10-date {
   font-size: 28rpx;
   color: #333;
@@ -1105,6 +1112,54 @@
 .top10-detail-item.temp {
   background: #fff0f6;
   color: #eb2f96;
+}
+
+/* 节假日标签样式 */
+.holiday-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  animation: holidayPulse 2s ease-in-out infinite;
+}
+
+@keyframes holidayPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
+  }
+}
+
+.holiday-icon {
+  font-size: 20rpx;
+  line-height: 1;
+}
+
+.holiday-name {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.2);
+}
+
+/* 有节假日的榜单项特殊样式 */
+.top10-item.has-holiday {
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.6) 0%, rgba(254, 243, 199, 0.4) 100%);
+  border-radius: 16rpx;
+  margin: 8rpx -10rpx;
+  padding: 24rpx 10rpx;
+  border: 1rpx solid rgba(251, 191, 36, 0.2);
+}
+
+.top10-item.has-holiday:first-child {
+  margin-top: 0;
 }
 
 .top10-passenger {
@@ -1401,47 +1456,161 @@
 
 /* 对比日期选择区域 */
 .compare-date-section {
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 30rpx;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
   margin-bottom: 20rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 0;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .compare-date-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  padding: 20rpx 16rpx;
+  border-radius: 16rpx;
+  transition: all 0.2s ease;
+}
+
+.compare-date-item.current-date-item {
+  background: linear-gradient(135deg, #e6f4ff 0%, #f0f7ff 100%);
+  border: 1rpx solid rgba(18, 150, 219, 0.15);
+}
+
+.compare-date-item.compare-date-item-picker {
+  background: linear-gradient(135deg, #f0fdf4 0%, #f5fdf8 100%);
+  border: 1rpx solid rgba(78, 166, 102, 0.15);
+}
+
+.compare-date-item.compare-date-item-picker:active {
+  background: linear-gradient(135deg, #dcfce7 0%, #ecfdf5 100%);
+  transform: scale(0.99);
+}
+
+.compare-date-icon-wrapper {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.compare-date-icon-wrapper.current {
+  background: linear-gradient(135deg, #1296db 0%, #0d7ab5 100%);
+  box-shadow: 0 6rpx 16rpx rgba(18, 150, 219, 0.35);
+}
+
+.compare-date-icon-wrapper.compare {
+  background: linear-gradient(135deg, #4EA666 0%, #38855a 100%);
+  box-shadow: 0 6rpx 16rpx rgba(78, 166, 102, 0.35);
+}
+
+.compare-icon-text {
+  font-size: 32rpx;
+  filter: brightness(0) invert(1);
+}
+
+.compare-date-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  min-width: 0;
 }
 
 .compare-date-label {
-  font-size: 28rpx;
-  color: #666;
+  font-size: 24rpx;
+  color: #94a3b8;
   font-weight: 500;
+  letter-spacing: 1rpx;
+}
+
+.compare-date-value {
+  font-size: 32rpx;
+  color: #1e293b;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.compare-date-value.current-value {
+  color: #1296db;
+}
+
+.compare-date-value.has-value {
+  color: #4EA666;
+}
+
+.compare-date-value.placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.compare-date-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.compare-date-badge.current-badge {
+  background: linear-gradient(135deg, #1296db 0%, #0d7ab5 100%);
+  color: #fff;
+  box-shadow: 0 4rpx 12rpx rgba(18, 150, 219, 0.3);
 }
 
 .compare-date-picker {
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  padding: 15rpx 20rpx;
-  background: #f5f7fa;
+  gap: 12rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(255, 255, 255, 0.8);
   border-radius: 12rpx;
-  min-width: 200rpx;
+  border: 1rpx solid rgba(78, 166, 102, 0.2);
+  min-width: 240rpx;
+  transition: all 0.2s ease;
 }
 
-.compare-date-value {
-  font-size: 28rpx;
-  color: #333;
-  font-weight: 500;
+.compare-date-picker:active {
+  background: rgba(78, 166, 102, 0.1);
+  border-color: rgba(78, 166, 102, 0.4);
+}
+
+.picker-arrow {
+  font-size: 20rpx;
+  color: #4EA666;
+  margin-left: auto;
+}
+
+/* 分隔线样式 */
+.compare-date-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0;
+  gap: 16rpx;
+}
+
+.divider-line {
   flex: 1;
+  height: 1rpx;
+  background: linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%);
 }
 
-.compare-date-icon {
-  font-size: 32rpx;
+.divider-text {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #94a3b8;
+  padding: 8rpx 20rpx;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-radius: 20rpx;
+  letter-spacing: 2rpx;
 }
 
 /* 详细对比卡片 */

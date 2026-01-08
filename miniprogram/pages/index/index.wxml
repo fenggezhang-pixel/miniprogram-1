@@ -247,18 +247,39 @@
   <view wx:elif="{{activeTab === 'compare'}}" class="data-container">
     <!-- 日期选择区域 -->
     <view class="compare-date-section">
-      <view class="compare-date-item">
-        <text class="compare-date-label">当天日期</text>
-        <text class="compare-date-value">{{selectedDate}}</text>
+      <!-- 当天日期 -->
+      <view class="compare-date-item current-date-item">
+        <view class="compare-date-icon-wrapper current">
+          <text class="compare-icon-text">📅</text>
+        </view>
+        <view class="compare-date-content">
+          <text class="compare-date-label">当天日期</text>
+          <text class="compare-date-value current-value">{{selectedDate}}</text>
+        </view>
+        <view class="compare-date-badge current-badge">基准</view>
       </view>
-      <view class="compare-date-item">
-        <text class="compare-date-label">对比日期</text>
-        <picker mode="date" value="{{compareCustomDate}}" start="2010-09-27" end="{{currentDate}}" bindchange="onCompareDateChange">
-          <view class="compare-date-picker">
-            <text class="compare-date-value">{{compareCustomDate || '请选择日期'}}</text>
-            <text class="compare-date-icon">📅</text>
-          </view>
-        </picker>
+      
+      <!-- 分隔线 -->
+      <view class="compare-date-divider">
+        <view class="divider-line"></view>
+        <text class="divider-text">VS</text>
+        <view class="divider-line"></view>
+      </view>
+      
+      <!-- 对比日期 -->
+      <view class="compare-date-item compare-date-item-picker">
+        <view class="compare-date-icon-wrapper compare">
+          <text class="compare-icon-text">🔄</text>
+        </view>
+        <view class="compare-date-content">
+          <text class="compare-date-label">对比日期</text>
+          <picker mode="date" value="{{compareCustomDate}}" start="2010-09-27" end="{{currentDate}}" bindchange="onCompareDateChange">
+            <view class="compare-date-picker">
+              <text class="compare-date-value {{compareCustomDate ? 'has-value' : 'placeholder'}}">{{compareCustomDate || '点击选择日期'}}</text>
+              <view class="picker-arrow">▼</view>
+            </view>
+          </picker>
+        </view>
       </view>
     </view>
 
@@ -412,7 +433,7 @@
           <text class="error-text">暂无历史榜单数据</text>
         </view>
 
-        <view class="top10-item" wx:for="{{top10List}}" wx:key="date" data-index="{{index}}" data-date="{{item.date}}" bindtap="onTop10ItemTap">
+        <view class="top10-item {{item.holiday ? 'has-holiday' : ''}}" wx:for="{{top10List}}" wx:key="date" data-index="{{index}}" data-date="{{item.date}}" bindtap="onTop10ItemTap">
           <!-- 排名与奖牌 -->
           <view class="top10-rank">
             <text class="rank-number {{index < 3 ? 'medal' : ''}}">
@@ -424,7 +445,14 @@
           <view class="top10-info">
             <view class="top10-main-info">
               <view class="top10-date-wrapper">
-                <text class="top10-date">{{item.date}}</text>
+                <view class="top10-date-row">
+                  <text class="top10-date">{{item.date}}</text>
+                  <!-- 节假日标签 -->
+                  <view wx:if="{{item.holiday}}" class="holiday-tag" style="background: {{item.holiday.color}};">
+                    <text class="holiday-icon">{{item.holiday.icon}}</text>
+                    <text class="holiday-name">{{item.holiday.name}}</text>
+                  </view>
+                </view>
                 <text class="top10-lunar" wx:if="{{item.lunarDate}}">{{item.lunarDate}}</text>
               </view>
               <text class="top10-weekday">{{item.weekday}}</text>
@@ -460,12 +488,12 @@
   <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
     <view class="version-tip-modal" catchtap="closeVersionTip">
       <view class="version-tip-icon">🚀</view>
-      <view class="version-tip-title">新版本 2.2.0</view>
+      <view class="version-tip-title">新版本 2.2.1</view>
       <view class="version-tip-content">
-        <view class="version-tip-item">📸 新增一键分享功能，生成精美图片</view>
-        <view class="version-tip-item">📅 优化日期选择器，限制未来日期</view>
-        <view class="version-tip-item">🎨 统一各组件布局宽度</view>
-        <view class="version-tip-item">📋 历史明细新增纯地铁客流显示</view>
+        <view class="version-tip-item">📊 优化7日柱状图，数据差异更直观</view>
+        <view class="version-tip-item">📈 优化客流对比图表，渐变色更美观</view>
+        <view class="version-tip-item">🎨 美化日期选择区域，交互体验更佳</view>
+        <view class="version-tip-item">🎆 历史榜单新增跨年标注</view>
       </view>
       <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
       <view class="version-tip-hint">点击任意位置关闭</view>

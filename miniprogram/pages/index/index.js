@@ -34,6 +34,17 @@ const LINE_COLORS = {
   'lineRong2': { name: '蓉2号线', color: '#6D8841' }
 }
 
+// 节假日配置（只标注跨年）
+const HOLIDAY_CONFIG = {
+  '12-31': { name: '跨年', icon: '🎆', color: '#f59e0b' }
+}
+
+// 获取节假日信息
+function getHolidayInfo(date) {
+  const monthDay = date ? date.slice(5) : ''
+  return HOLIDAY_CONFIG[monthDay] || null
+}
+
 const FIELD_MAP = {
   'date(date)': 'date',
   'dayType(string)': 'dayType',
@@ -161,7 +172,7 @@ Page({
   
   // 检查并显示版本更新提示
   checkVersionTip() {
-    const versionKey = 'version_tip_2.2.0_shown'
+    const versionKey = 'version_tip_2.2.1_shown'
     const hasShown = wx.getStorageSync(versionKey)
     if (!hasShown) {
       this.setData({ showVersionTip: true })
@@ -384,9 +395,11 @@ Page({
       if (res.list && res.list.length > 0) {
         const top10List = res.list.map((record, index) => {
           const normalized = this.normalizeRecord(record)
+          const date = normalized.date || record.date || ''
+          const holiday = getHolidayInfo(date)
           return {
             rank: index + 1,
-            date: normalized.date || record.date || '',
+            date: date,
             weekday: normalized.weekday || record.weekday || '',
             dayType: normalized.dayType || record.dayType || '',
             lunarDate: normalized.lunarDate || record.lunarDate || '',
@@ -394,7 +407,8 @@ Page({
             maxTemp: normalized.maxTemp || record.maxTemp || null,
             minTemp: normalized.minTemp || record.minTemp || null,
             restrictedPlate: normalized.restrictedPlate || record.restrictedPlate || '',
-            totalPassenger: this.getTotalPassenger(record).toFixed(2)
+            totalPassenger: this.getTotalPassenger(record).toFixed(2),
+            holiday: holiday
           }
         })
         this.setData({ top10List, top10Loading: false })
@@ -426,11 +440,13 @@ Page({
       if (res.list && res.list.length > 0) {
         const top10List = res.list.map((record, index) => {
           const normalized = this.normalizeRecord(record)
+          const date = normalized.date || record.date || ''
+          const holiday = getHolidayInfo(date)
           // 使用 pureMetroPassenger 字段作为客流数值（兼容两种字段名格式）
           const pureMetroPassenger = record['pureMetroPassenger(number)'] || record.pureMetroPassenger || normalized.pureMetroPassenger || this.getMetroOnlyPassenger(record)
           return {
             rank: index + 1,
-            date: normalized.date || record.date || '',
+            date: date,
             weekday: normalized.weekday || record.weekday || '',
             dayType: normalized.dayType || record.dayType || '',
             lunarDate: normalized.lunarDate || record.lunarDate || '',
@@ -438,7 +454,8 @@ Page({
             maxTemp: normalized.maxTemp || record.maxTemp || null,
             minTemp: normalized.minTemp || record.minTemp || null,
             restrictedPlate: normalized.restrictedPlate || record.restrictedPlate || '',
-            totalPassenger: parseFloat(pureMetroPassenger).toFixed(2)
+            totalPassenger: parseFloat(pureMetroPassenger).toFixed(2),
+            holiday: holiday
           }
         })
         this.setData({ top10List, top10Loading: false })
@@ -891,22 +908,22 @@ Page({
         
         ctx.scale(dpr, dpr)
         
-        // 绘制背景
+        // 绘制纯白背景
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, width, height)
         
-        // 准备数据 - 使用成都地铁官方线路颜色
+        // 准备数据 - 定义渐变色
         const barData = []
-        const colors = {
-          current: '#061098',     // 1号线蓝色 - 当天
-          custom: '#4EA666'       // 4号线绿色 - 自定义日期
+        const colorSets = {
+          current: { start: '#3b82f6', end: '#1d4ed8', label: '#3b82f6' },  // 蓝色渐变
+          custom: { start: '#22c55e', end: '#15803d', label: '#22c55e' }    // 绿色渐变
         }
         
         if (compareData.current) {
           barData.push({ 
             label: '当天', 
             value: compareData.current.totalPassenger, 
-            color: colors.current,
+            colorSet: colorSets.current,
             date: compareData.current.dateShort || compareData.current.date.slice(5)
           })
         }
@@ -914,62 +931,82 @@ Page({
           barData.push({ 
             label: '对比', 
             value: compareData.custom.totalPassenger, 
-            color: colors.custom,
+            colorSet: colorSets.custom,
             date: compareData.custom.dateShort || compareData.custom.date.slice(5)
           })
         }
         
         if (barData.length === 0) return
         
-        // 图表参数 - 优化布局，使两个柱子居中且间距更大
-        const padding = { top: 60, right: 60, bottom: 100, left: 70 }
+        // 图表参数 - 优化布局
+        const padding = { top: 55, right: 50, bottom: 75, left: 60 }
         const chartWidth = width - padding.left - padding.right
         const chartHeight = height - padding.top - padding.bottom
         
-        const maxValue = Math.max(...barData.map(item => item.value)) * 1.2
+        const values = barData.map(item => item.value)
+        const maxValue = Math.max(...values)
+        const minValue = Math.min(...values)
+        
+        // 优化：Y轴不从0开始，让柱子差异更明显
+        const yAxisMin = Math.floor(minValue * 0.85 / 50) * 50
+        const yAxisMax = Math.ceil(maxValue * 1.05 / 50) * 50
+        const yAxisRange = yAxisMax - yAxisMin
+        const yAxisStep = yAxisRange / 5
+        
         const totalBars = barData.length
         
-        // 计算柱子宽度和间距，让两个柱子居中显示，间距更大
-        const availableWidth = chartWidth
-        const barWidth = availableWidth * 0.35  // 柱子宽度占可用宽度的35%
-        const totalGap = availableWidth - (barWidth * totalBars)  // 总间距
-        const gap = totalGap / (totalBars + 1)  // 柱子之间的间距，两端也有间距
+        // 计算柱子宽度和间距，让两个柱子居中显示
+        const barWidth = chartWidth * 0.28
+        const totalGap = chartWidth - (barWidth * totalBars)
+        const gap = totalGap / (totalBars + 1)
         
-        // 绘制Y轴刻度和网格线
-        ctx.fillStyle = '#666'
-        ctx.font = '12px sans-serif'
+        // 绘制Y轴刻度和虚线网格
+        ctx.fillStyle = '#64748b'
+        ctx.font = '11px sans-serif'
         ctx.textAlign = 'right'
-        for (let i = 0; i <= 4; i++) {
-          const y = padding.top + chartHeight * (1 - i / 4)
-          const value = (maxValue * i / 4).toFixed(0)
-          ctx.fillText(value, padding.left - 15, y + 4)
+        ctx.textBaseline = 'middle'
+        
+        for (let i = 0; i <= 5; i++) {
+          const y = padding.top + chartHeight * (1 - i / 5)
+          const value = Math.round(yAxisMin + yAxisStep * i)
           
-          // 绘制网格线（更淡的颜色）
-          ctx.strokeStyle = '#f5f5f5'
+          // 绘制虚线网格
+          ctx.strokeStyle = '#e2e8f0'
           ctx.lineWidth = 1
+          ctx.setLineDash([4, 4])
           ctx.beginPath()
           ctx.moveTo(padding.left, y)
           ctx.lineTo(width - padding.right, y)
           ctx.stroke()
+          ctx.setLineDash([])
+          
+          // 绘制Y轴刻度值
+          ctx.fillText(value.toString(), padding.left - 12, y)
         }
         
         // 绘制柱状图
         barData.forEach((item, index) => {
-          // 计算柱子位置，居中显示
           const x = padding.left + gap + index * (barWidth + gap)
-          const barHeight = (item.value / maxValue) * chartHeight
+          // 使用优化后的Y轴范围计算柱子高度
+          const barHeight = ((item.value - yAxisMin) / yAxisRange) * chartHeight
           const y = height - padding.bottom - barHeight
+          const colorSet = item.colorSet
           
           // 绘制柱子阴影
           ctx.save()
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)'
-          ctx.shadowBlur = 8
-          ctx.shadowOffsetX = 0
-          ctx.shadowOffsetY = 2
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.15)'
+          ctx.shadowBlur = 12
+          ctx.shadowOffsetX = 3
+          ctx.shadowOffsetY = 6
           
-          // 绘制柱子（更大的圆角，更美观）
-          const radius = 8
-          ctx.fillStyle = item.color
+          // 绘制圆角柱子（渐变填充）
+          const barGradient = ctx.createLinearGradient(x, y, x, y + barHeight)
+          barGradient.addColorStop(0, colorSet.start)
+          barGradient.addColorStop(1, colorSet.end)
+          ctx.fillStyle = barGradient
+          
+          // 圆角矩形
+          const radius = 10
           ctx.beginPath()
           ctx.moveTo(x + radius, y)
           ctx.lineTo(x + barWidth - radius, y)
@@ -982,33 +1019,56 @@ Page({
           ctx.fill()
           ctx.restore()
           
-          // 绘制数值标签（在柱子顶部，更大更清晰）
-          ctx.fillStyle = '#333'
-          ctx.font = 'bold 14px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'bottom'
-          ctx.fillText(item.value.toFixed(2), x + barWidth / 2, y - 15)
-          
-          // 绘制X轴标签（更大字体）
-          ctx.fillStyle = item.color
+          // 绘制数值标签（带背景的标签）
+          const valueText = item.value.toFixed(2)
           ctx.font = 'bold 13px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'top'
-          ctx.fillText(item.label, x + barWidth / 2, height - padding.bottom + 30)
+          const textWidth = ctx.measureText(valueText).width
           
-          // 绘制日期（增加间距）
-          ctx.fillStyle = '#666'
-          ctx.font = '11px sans-serif'
+          // 绘制标签背景
+          ctx.fillStyle = colorSet.start
+          const labelPadding = 8
+          const labelWidth = textWidth + labelPadding * 2
+          const labelHeight = 24
+          const labelX = x + barWidth / 2 - labelWidth / 2
+          const labelY = y - labelHeight - 10
+          
+          ctx.beginPath()
+          ctx.moveTo(labelX + 6, labelY)
+          ctx.lineTo(labelX + labelWidth - 6, labelY)
+          ctx.quadraticCurveTo(labelX + labelWidth, labelY, labelX + labelWidth, labelY + 6)
+          ctx.lineTo(labelX + labelWidth, labelY + labelHeight - 6)
+          ctx.quadraticCurveTo(labelX + labelWidth, labelY + labelHeight, labelX + labelWidth - 6, labelY + labelHeight)
+          ctx.lineTo(labelX + 6, labelY + labelHeight)
+          ctx.quadraticCurveTo(labelX, labelY + labelHeight, labelX, labelY + labelHeight - 6)
+          ctx.lineTo(labelX, labelY + 6)
+          ctx.quadraticCurveTo(labelX, labelY, labelX + 6, labelY)
+          ctx.closePath()
+          ctx.fill()
+          
+          // 绘制数值文本
+          ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(valueText, x + barWidth / 2, labelY + labelHeight / 2)
+          
+          // 绘制X轴标签
+          ctx.fillStyle = colorSet.label
+          ctx.font = 'bold 14px sans-serif'
+          ctx.textBaseline = 'top'
+          ctx.fillText(item.label, x + barWidth / 2, height - padding.bottom + 15)
+          
+          // 绘制日期
+          ctx.fillStyle = '#64748b'
+          ctx.font = '12px sans-serif'
           const dateStr = item.date.length > 5 ? item.date.slice(5) : item.date
-          ctx.fillText(dateStr, x + barWidth / 2, height - padding.bottom + 55)
+          ctx.fillText(dateStr, x + barWidth / 2, height - padding.bottom + 38)
         })
         
-        // 绘制标题（更大更醒目）
-        ctx.fillStyle = '#333'
-        ctx.font = 'bold 16px sans-serif'
+        // 绘制标题
+        ctx.fillStyle = '#1e293b'
+        ctx.font = 'bold 15px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText('客流量同期对比（万人次）', width / 2, 30)
+        ctx.fillText('客流量同期对比（万人次）', width / 2, 28)
         
         console.log('drawCompareChart: 图表绘制完成，共绘制', barData.length, '个柱子')
       })
@@ -1895,90 +1955,140 @@ Page({
         // 缩放上下文
         ctx.scale(dpr, dpr)
         
-        // 绘制渐变背景
-        const bgGradient = ctx.createLinearGradient(0, 0, 0, height)
-        bgGradient.addColorStop(0, '#E6F4FF')
-        bgGradient.addColorStop(1, '#F0F9F5')
-        ctx.fillStyle = bgGradient
+        // 绘制纯白背景
+        ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, width, height)
         
-        // 图表参数
-        const padding = { top: 50, right: 20, bottom: 60, left: 50 }
+        // 图表参数 - 优化边距
+        const padding = { top: 45, right: 25, bottom: 55, left: 55 }
         const chartWidth = width - padding.left - padding.right
         const chartHeight = height - padding.top - padding.bottom
         
         const values = weekData.map(item => item.totalPassenger)
         const maxValue = Math.max(...values)
-        const minValue = 0
-        // 计算合适的Y轴最大值（向上取整到合适的整数）
-        const yAxisMax = Math.ceil(maxValue * 1.1 / 200) * 200
-        const yAxisStep = yAxisMax / 5
+        const minValue = Math.min(...values)
         
-        // 定义7种颜色（使用成都地铁线路颜色）
+        // 优化：Y轴不从0开始，让柱子差异更明显
+        // 计算Y轴起始值（取最小值的90%，向下取整到50的倍数）
+        const yAxisMin = Math.floor(minValue * 0.85 / 50) * 50
+        // 计算Y轴最大值（取最大值的105%，向上取整到50的倍数）
+        const yAxisMax = Math.ceil(maxValue * 1.05 / 50) * 50
+        const yAxisRange = yAxisMax - yAxisMin
+        const yAxisStep = yAxisRange / 5
+        
+        // 定义7种渐变色（更现代的配色）
         const colors = [
-          '#061098', // 1号线 - 深蓝
-          '#DA6648', // 2号线 - 橙红
-          '#D1197D', // 3号线 - 紫红
-          '#4EA666', // 4号线 - 绿色
-          '#904690', // 5号线 - 紫色
-          '#A36B34', // 6号线 - 棕色
-          '#7CC2D5'  // 7号线 - 浅蓝
+          { start: '#667eea', end: '#5a67d8' },  // 紫蓝
+          { start: '#3182ce', end: '#2b6cb0' },  // 蓝色
+          { start: '#d53f8c', end: '#b83280' },  // 玫红
+          { start: '#38a169', end: '#2f855a' },  // 绿色
+          { start: '#805ad5', end: '#6b46c1' },  // 紫色
+          { start: '#dd6b20', end: '#c05621' },  // 橙色
+          { start: '#319795', end: '#2c7a7b' }   // 青色
         ]
         
-        // 绘制Y轴刻度和网格线
-        ctx.strokeStyle = '#e0e0e0'
-        ctx.lineWidth = 1
-        ctx.fillStyle = '#666'
-        ctx.font = '10px sans-serif'
+        // 绘制Y轴刻度和网格线（虚线效果）
+        ctx.fillStyle = '#64748b'
+        ctx.font = '11px sans-serif'
         ctx.textAlign = 'right'
         ctx.textBaseline = 'middle'
         
         for (let i = 0; i <= 5; i++) {
           const y = padding.top + chartHeight * (1 - i / 5)
-          const value = (yAxisStep * i).toFixed(0)
+          const value = Math.round(yAxisMin + yAxisStep * i)
           
-          // 绘制网格线
+          // 绘制虚线网格
+          ctx.strokeStyle = '#e2e8f0'
+          ctx.lineWidth = 1
+          ctx.setLineDash([4, 4])
           ctx.beginPath()
           ctx.moveTo(padding.left, y)
           ctx.lineTo(width - padding.right, y)
           ctx.stroke()
+          ctx.setLineDash([])
           
-          // 绘制Y轴刻度
-          ctx.fillText(value, padding.left - 8, y)
+          // 绘制Y轴刻度值
+          ctx.fillText(value.toString(), padding.left - 10, y)
         }
         
         // 绘制柱状图
-        const barWidth = chartWidth / weekData.length * 0.6
-        const gap = chartWidth / weekData.length * 0.4
+        const barWidth = chartWidth / weekData.length * 0.55
         const barSpacing = chartWidth / weekData.length
         
         weekData.forEach((item, index) => {
-          const x = padding.left + index * barSpacing + gap / 2
-          const barHeight = (item.totalPassenger / yAxisMax) * chartHeight
+          const x = padding.left + index * barSpacing + (barSpacing - barWidth) / 2
+          // 使用优化后的Y轴范围计算柱子高度
+          const barHeight = ((item.totalPassenger - yAxisMin) / yAxisRange) * chartHeight
           const y = height - padding.bottom - barHeight
-          const color = colors[index % colors.length]
+          const colorSet = colors[index % colors.length]
           
-          // 绘制柱子
-          ctx.fillStyle = color
-          ctx.fillRect(x, y, barWidth, barHeight)
+          // 绘制柱子阴影
+          ctx.save()
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.12)'
+          ctx.shadowBlur = 8
+          ctx.shadowOffsetX = 2
+          ctx.shadowOffsetY = 4
           
-          // 绘制数值标签（在柱子顶部）
-          ctx.fillStyle = '#333'
+          // 绘制圆角柱子（渐变填充）
+          const barGradient = ctx.createLinearGradient(x, y, x, y + barHeight)
+          barGradient.addColorStop(0, colorSet.start)
+          barGradient.addColorStop(1, colorSet.end)
+          ctx.fillStyle = barGradient
+          
+          // 圆角矩形
+          const radius = 6
+          ctx.beginPath()
+          ctx.moveTo(x + radius, y)
+          ctx.lineTo(x + barWidth - radius, y)
+          ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + radius)
+          ctx.lineTo(x + barWidth, y + barHeight)
+          ctx.lineTo(x, y + barHeight)
+          ctx.lineTo(x, y + radius)
+          ctx.quadraticCurveTo(x, y, x + radius, y)
+          ctx.closePath()
+          ctx.fill()
+          ctx.restore()
+          
+          // 绘制数值标签（带背景的标签，更醒目）
+          const valueText = item.totalPassenger.toFixed(2)
           ctx.font = 'bold 11px sans-serif'
+          const textWidth = ctx.measureText(valueText).width
+          
+          // 绘制标签背景（圆角矩形）
+          ctx.fillStyle = colorSet.start
+          const labelPadding = 4
+          const labelWidth = textWidth + labelPadding * 2
+          const labelHeight = 18
+          const labelX = x + barWidth / 2 - labelWidth / 2
+          const labelY = y - labelHeight - 6
+          
+          ctx.beginPath()
+          ctx.moveTo(labelX + 4, labelY)
+          ctx.lineTo(labelX + labelWidth - 4, labelY)
+          ctx.quadraticCurveTo(labelX + labelWidth, labelY, labelX + labelWidth, labelY + 4)
+          ctx.lineTo(labelX + labelWidth, labelY + labelHeight - 4)
+          ctx.quadraticCurveTo(labelX + labelWidth, labelY + labelHeight, labelX + labelWidth - 4, labelY + labelHeight)
+          ctx.lineTo(labelX + 4, labelY + labelHeight)
+          ctx.quadraticCurveTo(labelX, labelY + labelHeight, labelX, labelY + labelHeight - 4)
+          ctx.lineTo(labelX, labelY + 4)
+          ctx.quadraticCurveTo(labelX, labelY, labelX + 4, labelY)
+          ctx.closePath()
+          ctx.fill()
+          
+          // 绘制数值文本
+          ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'center'
-          ctx.textBaseline = 'bottom'
-          ctx.fillText(item.totalPassenger.toFixed(2), x + barWidth / 2, y - 5)
+          ctx.textBaseline = 'middle'
+          ctx.fillText(valueText, x + barWidth / 2, labelY + labelHeight / 2)
           
           // 绘制日期标签
-          ctx.fillStyle = '#666'
-          ctx.font = '10px sans-serif'
+          ctx.fillStyle = '#475569'
+          ctx.font = '11px sans-serif'
           ctx.textBaseline = 'top'
-          // 格式化日期：月-日
           const dateStr = item.shortDate || item.date.slice(5)
-          ctx.fillText(dateStr, x + barWidth / 2, height - padding.bottom + 8)
+          ctx.fillText(dateStr, x + barWidth / 2, height - padding.bottom + 10)
         })
         
-        // 绘制标题（已在WXML中显示，这里不绘制）
         console.log('drawWeekBarChart: 图表绘制完成')
       })
   },
