@@ -47,7 +47,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative; /* 为绝对定位的子元素提供参考 */
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .date-section picker {
@@ -60,31 +62,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 18rpx 30rpx;
-  background: #f5f7fa;
-  border-radius: 12rpx;
+  padding: 20rpx 40rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+  border-radius: 16rpx;
+  border: 2rpx solid #e8eef5;
+  transition: all 0.2s ease;
 }
 
 .date-picker-hover {
-  background: #e8e8e8;
+  background: linear-gradient(135deg, #eef2f7 0%, #e4eaf2 100%);
+  border-color: #d0dae5;
 }
 
 .date-icon {
-  font-size: 28rpx;
-  margin-right: 12rpx;
+  font-size: 36rpx;
+  margin-right: 16rpx;
 }
 
 .date-text {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #333;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #2c3e50;
   flex: 1;
   text-align: center;
+  letter-spacing: 2rpx;
 }
 
 .date-arrow {
-  font-size: 20rpx;
-  color: #999;
+  font-size: 22rpx;
+  color: #7f8c9a;
+  margin-left: 10rpx;
 }
 
 .quick-buttons {
@@ -163,6 +170,8 @@
   padding: 8rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tab-item {
@@ -231,6 +240,7 @@
 
 /* 数据展示区域 */
 .data-container {
+  width: 100%;
   animation: fadeIn 0.3s ease;
 }
 
@@ -246,6 +256,8 @@
   padding: 30rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .info-row {
@@ -287,6 +299,8 @@
   padding: 40rpx 30rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 8rpx 30rpx rgba(122, 158, 184, 0.25);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .total-card-split {
@@ -384,6 +398,8 @@
   padding: 30rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .chart-header {
@@ -688,12 +704,12 @@
   padding: 30rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .line-list-header {
   margin-bottom: 30rpx;
-  padding-bottom: 20rpx;
-  border-bottom: 1rpx solid #eee;
 }
 
 .line-list-title {
@@ -782,6 +798,8 @@
   padding: 30rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .week-list-header {
@@ -933,6 +951,8 @@
   padding: 8rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .top10-type-btn {
@@ -977,6 +997,7 @@
   border-radius: 20rpx;
   padding: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
 .top10-item {
@@ -1431,6 +1452,8 @@
   margin-bottom: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .compare-detail-header {
@@ -1665,6 +1688,12 @@
   width: 100%;
 }
 
+/* 弹窗内的总客流卡片去掉阴影 */
+.modal-body .total-card {
+  box-shadow: none;
+  margin-bottom: 30rpx;
+}
+
 /* 版本更新提示弹窗样式 */
 .version-tip-overlay {
   position: fixed;
@@ -1775,8 +1804,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 30rpx 20rpx;
+  padding: 30rpx 0;
   margin-top: 20rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .generate-image-btn {

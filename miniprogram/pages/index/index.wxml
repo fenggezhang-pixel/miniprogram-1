@@ -460,11 +460,12 @@
   <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
     <view class="version-tip-modal" catchtap="closeVersionTip">
       <view class="version-tip-icon">🚀</view>
-      <view class="version-tip-title">新版本 2.1.9</view>
+      <view class="version-tip-title">新版本 2.2.0</view>
       <view class="version-tip-content">
         <view class="version-tip-item">📸 新增一键分享功能，生成精美图片</view>
+        <view class="version-tip-item">📅 优化日期选择器，限制未来日期</view>
+        <view class="version-tip-item">🎨 统一各组件布局宽度</view>
         <view class="version-tip-item">📋 历史明细新增纯地铁客流显示</view>
-        <view class="version-tip-item">💾 优化保存图片权限处理</view>
       </view>
       <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
       <view class="version-tip-hint">点击任意位置关闭</view>

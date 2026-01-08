@@ -134,7 +134,6 @@ Page({
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
     
-    const todayStr = this.formatDate(today)
     const yesterdayStr = this.formatDate(yesterday)
     
     // 检查是否从分享链接打开，优先使用分享的日期
@@ -151,7 +150,7 @@ Page({
     }
     
     this.setData({
-      currentDate: todayStr,
+      currentDate: yesterdayStr,  // 限制最大日期为昨天
       selectedDate: targetDate
     })
     this.queryPassengerData(targetDate)
@@ -162,7 +161,7 @@ Page({
   
   // 检查并显示版本更新提示
   checkVersionTip() {
-    const versionKey = 'version_tip_2.1.9_shown'
+    const versionKey = 'version_tip_2.2.0_shown'
     const hasShown = wx.getStorageSync(versionKey)
     if (!hasShown) {
       this.setData({ showVersionTip: true })
