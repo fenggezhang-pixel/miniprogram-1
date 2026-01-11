@@ -41,8 +41,22 @@ const HOLIDAY_CONFIG = {
 
 // 获取节假日信息
 function getHolidayInfo(date) {
-  const monthDay = date ? date.slice(5) : ''
-  return HOLIDAY_CONFIG[monthDay] || null
+  try {
+    if (!date) {
+      return null
+    }
+    // 确保date是字符串类型
+    const dateStr = typeof date === 'string' ? date : String(date)
+    // 检查是否是有效的日期格式（YYYY-MM-DD）
+    if (dateStr.length < 5 || !/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      return null
+    }
+    const monthDay = dateStr.slice(5) || ''
+    return HOLIDAY_CONFIG[monthDay] || null
+  } catch (e) {
+    console.error('getHolidayInfo error:', e, 'date:', date)
+    return null
+  }
 }
 
 const FIELD_MAP = {
@@ -213,6 +227,13 @@ Page({
     const windowInfo = wx.getWindowInfo()
     this.pixelRatio = deviceInfo.pixelRatio || windowInfo.pixelRatio || 1
     this.screenWidth = windowInfo.windowWidth
+  },
+
+  onShow() {
+    // 页面显示时，如果当前在历史榜单tab，则重新获取最新数据
+    if (this.data.activeTab === 'top10') {
+      this.queryTop10Data()
+    }
   },
 
   // 分享给好友
@@ -429,11 +450,12 @@ Page({
       if (res.list && res.list.length > 0) {
         const top10List = res.list.map((record, index) => {
           const normalized = this.normalizeRecord(record)
-          const date = normalized.date || record.date || ''
-          const holiday = getHolidayInfo(date)
+          const date = normalized.date || record.date || record['date(date)'] || ''
+          const dateStr = typeof date === 'string' ? date : String(date)
+          const holiday = getHolidayInfo(dateStr)
           return {
             rank: index + 1,
-            date: date,
+            date: dateStr,
             weekday: normalized.weekday || record.weekday || '',
             dayType: normalized.dayType || record.dayType || '',
             lunarDate: normalized.lunarDate || record.lunarDate || '',
@@ -474,13 +496,14 @@ Page({
       if (res.list && res.list.length > 0) {
         const top10List = res.list.map((record, index) => {
           const normalized = this.normalizeRecord(record)
-          const date = normalized.date || record.date || ''
-          const holiday = getHolidayInfo(date)
+          const date = normalized.date || record.date || record['date(date)'] || ''
+          const dateStr = typeof date === 'string' ? date : String(date)
+          const holiday = getHolidayInfo(dateStr)
           // 使用 pureMetroPassenger 字段作为客流数值（兼容两种字段名格式）
           const pureMetroPassenger = record['pureMetroPassenger(number)'] || record.pureMetroPassenger || normalized.pureMetroPassenger || this.getMetroOnlyPassenger(record)
           return {
             rank: index + 1,
-            date: date,
+            date: dateStr,
             weekday: normalized.weekday || record.weekday || '',
             dayType: normalized.dayType || record.dayType || '',
             lunarDate: normalized.lunarDate || record.lunarDate || '',
@@ -498,6 +521,7 @@ Page({
       }
     } catch (err) {
       console.error('纯地铁客流聚合查询失败:', err)
+      console.error('错误详情:', JSON.stringify(err, null, 2))
       this.setData({ top10List: [], top10Loading: false })
     }
   },

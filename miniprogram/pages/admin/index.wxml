@@ -1,28 +1,55 @@
 <!--pages/admin/index.wxml-->
 <view class="admin-container">
   <view class="admin-header">
-    <text class="admin-title">数据管理</text>
-    <text class="admin-subtitle">手动录入微博数据</text>
+    <text class="admin-welcome-icon">👋</text>
+    <text class="admin-title">欢迎进入数据管理</text>
+    <text class="admin-subtitle">开发者专用 · 手动录入微博数据</text>
   </view>
 
   <!-- 密码验证（首次访问） -->
   <view class="password-section" wx:if="{{!isAuthenticated}}">
+    <!-- 警告信息 -->
+    <view class="warning-card">
+      <view class="warning-item">
+        <text class="warning-icon">⚠️</text>
+        <text class="warning-text">非管理员请勿尝试输入密码</text>
+      </view>
+      <view class="warning-item">
+        <text class="warning-icon">🚫</text>
+        <text class="warning-text">错误超过五次会被小程序永久拉黑</text>
+      </view>
+      <view class="warning-item" wx:if="{{errorCount > 0}}">
+        <text class="warning-icon">❌</text>
+        <text class="warning-text warning-error">当前错误次数：{{errorCount}}/5</text>
+      </view>
+    </view>
+
     <view class="password-input-wrapper">
       <text class="password-label">请输入管理密码：</text>
-      <input 
-        class="password-input" 
-        type="password" 
-        placeholder="请输入密码"
-        value="{{password}}"
-        bindinput="onPasswordInput"
-        password
-      />
+      <view class="password-input-container">
+        <input 
+          class="password-input" 
+          type="text"
+          placeholder="请输入密码"
+          value="{{password}}"
+          bindinput="onPasswordInput"
+          password="{{!showPassword}}"
+        />
+        <view class="password-eye" bindtap="togglePassword">
+          <text class="eye-icon">{{showPassword ? '👁️' : '👁️‍🗨️'}}</text>
+        </view>
+      </view>
       <button class="password-btn" bindtap="checkPassword">确认</button>
     </view>
   </view>
 
   <!-- 数据录入界面（已认证） -->
   <view class="input-section" wx:else>
+    <view class="welcome-banner">
+      <text class="welcome-icon">✨</text>
+      <text class="welcome-text">欢迎回来，开发者</text>
+    </view>
+    
     <view class="input-card">
       <view class="input-label">
         <text class="label-text">微博文本：</text>

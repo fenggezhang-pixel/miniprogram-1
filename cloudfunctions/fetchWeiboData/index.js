@@ -249,23 +249,23 @@ function calculatePassengerData(parsedData) {
   const rong2 = Number(lineRong2)
   
   // 纯客流（pureMetroPassenger）= 客运量（地铁）+ 市域（郊）铁路客运量（lineS3）
-  const pureMetroPassenger = (Math.round((metro + s3) * 100) / 100).toFixed(2)
+  const pureMetroPassenger = Math.round((metro + s3) * 100) / 100
   
   // 总客流（totalPassenger）= 客运量（地铁）+ 市域（郊）铁路客运量（lineS3）+ 有轨电车客运量（lineRong2）
-  const totalPassenger = (Math.round((metro + s3 + rong2) * 100) / 100).toFixed(2)
+  const totalPassenger = Math.round((metro + s3 + rong2) * 100) / 100
   
   const result = {
-    date,
-    'lineS3(number)': (Math.round(s3 * 100) / 100).toFixed(2),
-    'lineRong2(number)': (Math.round(rong2 * 100) / 100).toFixed(2),
-    'pureMetroPassenger(number)': pureMetroPassenger,
-    'totalPassenger(number)': totalPassenger
+    'date(date)': date,  // 只使用 date(date) 字段，存储为字符串类型（YYYY-MM-DD格式）
+    'lineS3(number)': Math.round(s3 * 100) / 100,  // number 类型
+    'lineRong2(number)': Math.round(rong2 * 100) / 100,  // number 类型
+    'pureMetroPassenger(number)': pureMetroPassenger,  // number 类型
+    'totalPassenger(number)': totalPassenger  // number 类型
   }
   
-  // 添加温度信息（如果存在）
+  // 添加温度信息（如果存在，存储为 number 类型）
   if (minTemp !== null && maxTemp !== null) {
-    result['minTemp(number)'] = String(minTemp)
-    result['maxTemp(number)'] = String(maxTemp)
+    result['minTemp(number)'] = Number(minTemp)
+    result['maxTemp(number)'] = Number(maxTemp)
   }
   
   // 添加天气信息（如果存在）
@@ -279,27 +279,18 @@ function calculatePassengerData(parsedData) {
 // 保存到数据库
 async function saveToDatabase(data) {
   try {
-    const { date } = data
-    
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      throw new Error('日期格式不正确: ' + date)
+    // 从 date(date) 字段中获取日期字符串
+    const date = data['date(date)']
+    if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error('日期格式不正确: date(date) 字段必须是 YYYY-MM-DD 格式的字符串')
     }
     
-    // 检查数据是否已存在（尝试两种日期字段格式）
-    let existingRes = await db.collection('passenger_data_update')
+    // 检查数据是否已存在（使用 date(date) 字段，字符串类型）
+    const existingRes = await db.collection('passenger_data_update')
       .where({
-        date: date
+        'date(date)': date
       })
       .get()
-    
-    // 如果第一种格式没找到，尝试 date(date) 格式
-    if (!existingRes.data || existingRes.data.length === 0) {
-      existingRes = await db.collection('passenger_data_update')
-        .where({
-          'date(date)': date
-        })
-        .get()
-    }
     
     if (existingRes.data && existingRes.data.length > 0) {
       console.log('数据已存在，更新数据:', date)
@@ -318,24 +309,13 @@ async function saveToDatabase(data) {
       } catch (e) {
         console.error('使用 _id 更新失败，尝试使用 where 条件:', e)
         // 如果使用 _id 失败，尝试使用 where 条件
-        try {
-          updateRes = await db.collection('passenger_data_update')
-            .where({
-              date: date
-            })
-            .update({
-              data: data
-            })
-        } catch (e2) {
-          // 如果第一种格式失败，尝试 date(date) 格式
-          updateRes = await db.collection('passenger_data_update')
-            .where({
-              'date(date)': date
-            })
-            .update({
-              data: data
-            })
-        }
+        updateRes = await db.collection('passenger_data_update')
+          .where({
+            'date(date)': date
+          })
+          .update({
+            data: data
+          })
       }
       return {
         action: 'update',

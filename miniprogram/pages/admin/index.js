@@ -8,7 +8,9 @@ Page({
     weiboText: '',
     submitting: false,
     submitResult: null,
-    canSubmit: false  // 是否可以提交
+    canSubmit: false,  // 是否可以提交
+    showPassword: false,  // 是否显示密码
+    errorCount: 0  // 错误次数（仅用于显示警告）
   },
 
   onLoad(options) {
@@ -20,6 +22,13 @@ Page({
     this.setData({ password: e.detail.value })
   },
 
+  // 切换密码显示/隐藏
+  togglePassword() {
+    this.setData({
+      showPassword: !this.data.showPassword
+    })
+  },
+
   // 验证密码
   checkPassword() {
     const password = this.data.password.trim()
@@ -27,11 +36,29 @@ Page({
     const correctPassword = 'Chengdumetro'
     
     if (password === correctPassword) {
-      this.setData({ isAuthenticated: true })
+      this.setData({ 
+        isAuthenticated: true,
+        errorCount: 0  // 重置错误次数
+      })
       wx.showToast({ title: '验证成功', icon: 'success' })
     } else {
-      wx.showToast({ title: '密码错误', icon: 'none' })
-      this.setData({ password: '' })
+      // 增加错误次数（仅用于显示警告，不实际执行）
+      const errorCount = this.data.errorCount + 1
+      this.setData({ 
+        password: '',
+        errorCount: errorCount
+      })
+      
+      // 根据错误次数显示不同的提示
+      if (errorCount >= 5) {
+        wx.showToast({ 
+          title: '密码错误次数过多，请稍后再试', 
+          icon: 'none',
+          duration: 2000
+        })
+      } else {
+        wx.showToast({ title: '密码错误', icon: 'none' })
+      }
     }
   },
 
@@ -70,11 +97,19 @@ Page({
 
       if (res.result && res.result.success) {
         wx.showToast({ title: '提交成功', icon: 'success' })
+        
+        // 从返回的数据中提取日期
+        const resultData = res.result.data || {}
+        const date = resultData['date(date)'] || resultData.date || ''
+        
         this.setData({
           submitResult: {
             success: true,
             message: res.result.message || '数据已成功写入数据库',
-            data: res.result.data
+            data: {
+              ...resultData,
+              date: date  // 确保date字段存在
+            }
           },
           weiboText: '', // 清空输入框
           canSubmit: false // 重置提交状态
