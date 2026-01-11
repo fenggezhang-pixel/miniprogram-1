@@ -1,0 +1,12 @@
+{
+  "triggers": [
+    {
+      "name": "dailyFetch",
+      "type": "timer",
+      "config": "0 10 7 * * * *"
+    }
+  ],
+  "permissions": {
+    "openapi": []
+  }
+}

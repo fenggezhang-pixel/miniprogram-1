@@ -1,0 +1,225 @@
+/* pages/admin/index.wxss */
+.admin-container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf0 100%);
+  padding: 40rpx 30rpx;
+}
+
+.admin-header {
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.admin-title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #1e293b;
+  margin-bottom: 16rpx;
+}
+
+.admin-subtitle {
+  display: block;
+  font-size: 28rpx;
+  color: #64748b;
+}
+
+/* 密码验证区域 */
+.password-section {
+  margin-top: 100rpx;
+}
+
+.password-input-wrapper {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 60rpx 40rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+}
+
+.password-label {
+  display: block;
+  font-size: 32rpx;
+  color: #334155;
+  margin-bottom: 30rpx;
+  font-weight: 500;
+}
+
+.password-input {
+  width: 100%;
+  height: 88rpx;
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  font-size: 32rpx;
+  color: #1e293b;
+  margin-bottom: 30rpx;
+  box-sizing: border-box;
+}
+
+.password-input:focus {
+  border-color: #1296db;
+  background: #fff;
+}
+
+.password-btn {
+  width: 100%;
+  height: 88rpx;
+  background: linear-gradient(135deg, #1296db 0%, #0d7bb8 100%);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 500;
+  border-radius: 16rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-btn:active {
+  opacity: 0.8;
+}
+
+/* 输入区域 */
+.input-section {
+  margin-top: 20rpx;
+}
+
+.input-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+  margin-bottom: 30rpx;
+}
+
+.input-label {
+  margin-bottom: 20rpx;
+}
+
+.label-text {
+  display: block;
+  font-size: 32rpx;
+  color: #1e293b;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+}
+
+.label-hint {
+  display: block;
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.weibo-textarea {
+  width: 100%;
+  min-height: 300rpx;
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  font-size: 28rpx;
+  color: #1e293b;
+  line-height: 1.6;
+  margin-bottom: 30rpx;
+  box-sizing: border-box;
+}
+
+.weibo-textarea:focus {
+  border-color: #1296db;
+  background: #fff;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 88rpx;
+  background: linear-gradient(135deg, #1296db 0%, #0d7bb8 100%);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 500;
+  border-radius: 16rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submit-btn:active {
+  opacity: 0.8;
+}
+
+.submit-btn[disabled] {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  opacity: 0.6;
+}
+
+.submit-btn:not([disabled]) {
+  background: linear-gradient(135deg, #1296db 0%, #0d7bb8 100%) !important;
+  color: #fff !important;
+}
+
+/* 结果卡片 */
+.result-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.result-header.success {
+  color: #10b981;
+}
+
+.result-header.error {
+  color: #ef4444;
+}
+
+.result-icon {
+  font-size: 40rpx;
+  margin-right: 16rpx;
+}
+
+.result-title {
+  font-size: 36rpx;
+  font-weight: 500;
+}
+
+.result-content {
+  padding-top: 20rpx;
+  border-top: 2rpx solid #f1f5f9;
+}
+
+.result-message {
+  display: block;
+  font-size: 28rpx;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+}
+
+.result-detail {
+  display: block;
+  font-size: 26rpx;
+  color: #64748b;
+  line-height: 1.8;
+  white-space: pre-line;
+}

@@ -1,0 +1,14 @@
+{
+  "name": "fetchWeiboData",
+  "version": "1.0.0",
+  "description": "Fetch passenger data from Weibo and save to cloud database",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "wx-server-sdk": "~2.4.0"
+  }
+}

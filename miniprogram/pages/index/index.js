@@ -200,6 +200,13 @@ Page({
     this.setData({ showVersionTip: false })
   },
 
+  // 打开管理页面（长按Logo触发）
+  openAdminPage() {
+    wx.navigateTo({
+      url: '/pages/admin/index'
+    })
+  },
+
   onReady() {
     // 获取设备信息用于canvas适配
     const deviceInfo = wx.getDeviceInfo()

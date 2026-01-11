@@ -3,7 +3,7 @@
 <view class="container">
   <!-- 头部Logo -->
   <view class="header">
-    <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+    <image class="logo" src="/images/logo.png" mode="aspectFit" bindlongpress="openAdminPage"></image>
     <text class="title">蓉城客流</text>
     <text class="subtitle">成都地铁客流查询</text>
   </view>
