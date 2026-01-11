@@ -201,7 +201,7 @@ Page({
   
   // 检查并显示版本更新提示
   checkVersionTip() {
-    const versionKey = 'version_tip_2.2.2_shown'
+    const versionKey = 'version_tip_2.2.3_shown'
     const hasShown = wx.getStorageSync(versionKey)
     if (!hasShown) {
       this.setData({ showVersionTip: true })

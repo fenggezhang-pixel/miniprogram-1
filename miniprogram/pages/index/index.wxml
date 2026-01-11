@@ -587,12 +587,12 @@
   <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
     <view class="version-tip-modal" catchtap="closeVersionTip">
       <view class="version-tip-icon">🚀</view>
-      <view class="version-tip-title">新版本 2.2.2</view>
+      <view class="version-tip-title">新版本 2.2.3</view>
       <view class="version-tip-content">
-        <view class="version-tip-item">📊 新增月日均客流查询功能</view>
-        <view class="version-tip-item">📈 新增年日均客流查询功能</view>
-        <view class="version-tip-item">📉 月日均界面新增每日趋势折线图</view>
-        <view class="version-tip-hint-item">💡 查询方式：点击顶部"昨日客流"标签，在下拉菜单中选择"月日均客流"或"年日均客流"即可</view>
+        <view class="version-tip-item">✨ 优化历史榜单数据的实时更新</view>
+        <view class="version-tip-item">🎯 优化了数据展示的准确性</view>
+        <view class="version-tip-item">🔧 修复了一些已知问题</view>
+        <view class="version-tip-item">⚡ 提升了整体性能和用户体验</view>
       </view>
       <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
       <view class="version-tip-hint">点击任意位置关闭</view>
