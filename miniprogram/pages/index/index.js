@@ -137,7 +137,22 @@ Page({
     // 版本更新弹窗
     showVersionTip: false,
     // 长图生成状态
-    generatingImage: false
+    generatingImage: false,
+    // 日均客流数据
+    dailyAverageData: {
+      monthTotal: null,       // 月日均全网客运量（含蓉2号线）
+      monthPure: null,        // 月日均纯地铁客流（不含蓉2号线）
+      yearTotal: null,        // 年日均全网客运量
+      yearPure: null,         // 年日均纯地铁客流
+      monthDays: 0,           // 月有效数据天数
+      yearDays: 0,            // 年有效数据天数
+      loading: false,
+      monthDailyData: []      // 当月每日详细数据，用于绘制折线图
+    },
+    // 日均数据展开状态
+    showDailyAverage: false,
+    // 日均数据类型：'month' 月日均 或 'year' 年日均 或 null（未选择）
+    dailyAverageType: null
   },
 
   onLoad(options) {
@@ -172,7 +187,7 @@ Page({
   
   // 检查并显示版本更新提示
   checkVersionTip() {
-    const versionKey = 'version_tip_2.2.1_shown'
+    const versionKey = 'version_tip_2.2.2_shown'
     const hasShown = wx.getStorageSync(versionKey)
     if (!hasShown) {
       this.setData({ showVersionTip: true })
@@ -269,7 +284,19 @@ Page({
   // 切换标签
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab
-    this.setData({ activeTab: tab })
+    
+    // 如果点击的是"昨日客流"标签
+    if (tab === 'daily' && this.data.activeTab === 'daily') {
+      // 切换下拉菜单（无论是否选择了日均类型）
+      this.toggleDailyAverageMenu()
+      return
+    }
+    
+    this.setData({ 
+      activeTab: tab,
+      showDailyAverage: false, // 切换标签时关闭下拉菜单
+      dailyAverageType: null // 重置选择
+    })
     
     if (tab === 'weekly') {
       this.queryWeekData()
@@ -699,6 +726,233 @@ Page({
         })
   }
     })
+  },
+
+  // 切换日均数据下拉菜单
+  toggleDailyAverageMenu() {
+    const showDailyAverage = !this.data.showDailyAverage
+    this.setData({ showDailyAverage })
+  },
+
+  // 选择数据类型（昨日客流、月日均、年日均）
+  selectDailyAverageType(e) {
+    const type = e.currentTarget.dataset.type // 'daily'、'month' 或 'year'
+    
+    if (type === 'daily') {
+      // 返回昨日客流
+      this.setData({
+        dailyAverageType: null,
+        showDailyAverage: false
+      })
+    } else {
+      // 选择月日均或年日均
+      this.setData({
+        dailyAverageType: type,
+        showDailyAverage: false, // 选择后关闭菜单
+        // 重置数据
+        'dailyAverageData.monthTotal': null,
+        'dailyAverageData.monthPure': null,
+        'dailyAverageData.monthDays': 0,
+        'dailyAverageData.yearTotal': null,
+        'dailyAverageData.yearPure': null,
+        'dailyAverageData.yearDays': 0
+      })
+      
+      // 查询对应类型的数据
+      this.queryDailyAverageData(type)
+    }
+  },
+
+  // 查询月日均和年日均客流数据
+  async queryDailyAverageData(type = null) {
+    const selectedDate = this.data.selectedDate
+    if (!selectedDate) return
+
+    // 解析选中日期
+    const dateParts = selectedDate.split('-')
+    const year = dateParts[0]
+    const month = dateParts[1]
+    const day = parseInt(dateParts[2])
+
+    // 设置加载状态
+    this.setData({
+      'dailyAverageData.loading': true
+    })
+
+    try {
+      const db = app.globalData.db
+
+      // 构建月份范围
+      const monthStart = `${year}-${month}-01`
+      const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1
+      const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year)
+      const nextMonthStr = String(nextMonth).padStart(2, '0')
+      const monthEnd = `${nextYear}-${nextMonthStr}-01`
+
+      // 构建年份范围
+      const yearStart = `${year}-01-01`
+      const yearEnd = `${parseInt(year) + 1}-01-01`
+
+      console.log('查询日均数据，选中日期:', selectedDate, '月份范围:', monthStart, '-', monthEnd, '年份范围:', yearStart, '-', yearEnd)
+
+      // 根据选择的类型查询数据
+      const targetType = type || this.data.dailyAverageType
+      
+      let monthTotal = null, monthPure = null, monthDays = 0
+      let yearTotal = null, yearPure = null, yearDays = 0
+      let monthDailyData = [] // 存储每日详细数据，用于绘制折线图
+
+      // 只查询选中的类型
+      if (targetType === 'month') {
+        // 生成月份日期列表（从1号到选中日期）
+        const monthDates = []
+        for (let d = 1; d <= day; d++) {
+          monthDates.push(`${year}-${month}-${String(d).padStart(2, '0')}`)
+        }
+
+        console.log('查询月日均，日期数:', monthDates.length)
+
+        // 批量查询月数据
+        let monthData = []
+        const batchSize = 20
+        for (let i = 0; i < monthDates.length; i += batchSize) {
+          const batch = monthDates.slice(i, i + batchSize)
+          let res = await db.collection('passenger_data_update')
+            .where({ date: db.command.in(batch) })
+            .get()
+          
+          if (!res.data || res.data.length === 0) {
+            res = await db.collection('passenger_data_update')
+              .where({ 'date(date)': db.command.in(batch) })
+              .get()
+          }
+          
+          if (res.data && res.data.length > 0) {
+            monthData = monthData.concat(res.data)
+          }
+        }
+
+        console.log('月数据查询结果:', monthData.length, '条')
+
+        // 处理月数据
+        if (monthData.length > 0) {
+          let totalSum = 0, pureSum = 0, validCount = 0
+          monthData.forEach(record => {
+            const normalized = this.normalizeRecord(record)
+            const total = this.getTotalPassenger(record)
+            const pure = this.getMetroOnlyPassenger(record)
+            if (total > 0) {
+              totalSum += total
+              pureSum += pure
+              validCount++
+              
+              // 保存每日数据用于折线图
+              const recordDate = String(normalized.date || '').substring(0, 10)
+              monthDailyData.push({
+                date: recordDate,
+                shortDate: recordDate.slice(5), // MM-DD
+                day: parseInt(recordDate.slice(8)), // 日期数字
+                total: total,
+                pure: pure,
+                weekday: normalized.weekday || ''
+              })
+            }
+          })
+          
+          // 按日期排序
+          monthDailyData.sort((a, b) => a.date.localeCompare(b.date))
+          
+          if (validCount > 0) {
+            monthDays = validCount
+            monthTotal = (totalSum / validCount).toFixed(2)
+            monthPure = (pureSum / validCount).toFixed(2)
+          }
+        }
+      } else if (targetType === 'year') {
+        // 生成年份日期列表（从1月1日到选中日期）
+        const yearDates = []
+        const selectedDateObj = new Date(selectedDate)
+        const yearStartObj = new Date(yearStart)
+        for (let d = new Date(yearStartObj); d <= selectedDateObj; d.setDate(d.getDate() + 1)) {
+          yearDates.push(this.formatDate(new Date(d)))
+        }
+
+        console.log('查询年日均，日期数:', yearDates.length)
+
+        // 批量查询年数据
+        let yearData = []
+        const batchSize = 20
+        for (let i = 0; i < yearDates.length; i += batchSize) {
+          const batch = yearDates.slice(i, i + batchSize)
+          let res = await db.collection('passenger_data_update')
+            .where({ date: db.command.in(batch) })
+            .get()
+          
+          if (!res.data || res.data.length === 0) {
+            res = await db.collection('passenger_data_update')
+              .where({ 'date(date)': db.command.in(batch) })
+              .get()
+          }
+          
+          if (res.data && res.data.length > 0) {
+            yearData = yearData.concat(res.data)
+          }
+        }
+
+        console.log('年数据查询结果:', yearData.length, '条')
+
+        // 处理年数据
+        if (yearData.length > 0) {
+          let totalSum = 0, pureSum = 0, validCount = 0
+          yearData.forEach(record => {
+            const total = this.getTotalPassenger(record)
+            const pure = this.getMetroOnlyPassenger(record)
+            if (total > 0) {
+              totalSum += total
+              pureSum += pure
+              validCount++
+            }
+          })
+          if (validCount > 0) {
+            yearDays = validCount
+            yearTotal = (totalSum / validCount).toFixed(2)
+            yearPure = (pureSum / validCount).toFixed(2)
+          }
+        }
+      }
+
+      console.log('日均数据计算完成:', { monthTotal, monthPure, monthDays, yearTotal, yearPure, yearDays })
+
+      this.setData({
+        dailyAverageData: {
+          monthTotal,
+          monthPure,
+          yearTotal,
+          yearPure,
+          monthDays,
+          yearDays,
+          loading: false,
+          debugDates: null,
+          totalCount: 0,
+          monthDailyData: monthDailyData || []
+        }
+      }, () => {
+        // 数据设置完成后，如果是月日均类型，绘制折线图
+        if (targetType === 'month' && monthDailyData.length > 0) {
+          wx.nextTick(() => {
+            setTimeout(() => {
+              this.drawMonthDailyLineChart()
+            }, 300)
+          })
+        }
+      })
+
+    } catch (err) {
+      console.error('查询日均客流数据失败:', err)
+      this.setData({
+        'dailyAverageData.loading': false
+      })
+    }
   },
 
   // 查询7日数据
@@ -1895,6 +2149,158 @@ Page({
         ctx.fillText('近7日客流趋势（万人次）', width / 2, 25)
         
         console.log('drawLineChart: 图表绘制完成')
+      })
+  },
+
+  // 绘制月日均折线图（只显示纯地铁）
+  drawMonthDailyLineChart(retryCount = 0) {
+    const monthDailyData = this.data.dailyAverageData.monthDailyData
+    if (!monthDailyData || monthDailyData.length === 0) {
+      console.log('drawMonthDailyLineChart: monthDailyData为空，无法绘制图表')
+      return
+    }
+
+    // 最多重试5次
+    if (retryCount > 5) {
+      console.error('drawMonthDailyLineChart: 重试次数过多，放弃绘制')
+      return
+    }
+
+    console.log('drawMonthDailyLineChart: 开始绘制图表，数据量:', monthDailyData.length, '重试次数:', retryCount)
+
+    const query = wx.createSelectorQuery().in(this)
+    query.select('#monthDailyLineChart')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        console.log('drawMonthDailyLineChart: query结果', res)
+        
+        if (!res || !res[0]) {
+          console.error('drawMonthDailyLineChart: 无法获取canvas元素，200ms后重试...')
+          setTimeout(() => this.drawMonthDailyLineChart(retryCount + 1), 200)
+          return
+        }
+        
+        const canvas = res[0].node
+        if (!canvas) {
+          console.error('drawMonthDailyLineChart: canvas节点为空，200ms后重试...')
+          setTimeout(() => this.drawMonthDailyLineChart(retryCount + 1), 200)
+          return
+        }
+        
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          console.error('drawMonthDailyLineChart: 无法获取canvas上下文，200ms后重试...')
+          setTimeout(() => this.drawMonthDailyLineChart(retryCount + 1), 200)
+          return
+        }
+        
+        const windowInfo = wx.getWindowInfo()
+        const deviceInfo = wx.getDeviceInfo()
+        const dpr = deviceInfo.pixelRatio || windowInfo.pixelRatio || 1
+        const width = (res[0].width && res[0].width > 0) ? res[0].width : (690 / 750 * windowInfo.windowWidth)
+        const height = (res[0].height && res[0].height > 0) ? res[0].height : (450 / 750 * windowInfo.windowWidth)
+        
+        console.log('drawMonthDailyLineChart: canvas尺寸', width, height, 'dpr:', dpr)
+        
+        // 设置Canvas物理尺寸
+        canvas.width = Math.floor(width * dpr)
+        canvas.height = Math.floor(height * dpr)
+        ctx.scale(dpr, dpr)
+        
+        // 绘制背景
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, width, height)
+        
+        // 图表参数
+        const padding = { top: 40, right: 30, bottom: 60, left: 60 }
+        const chartWidth = width - padding.left - padding.right
+        const chartHeight = height - padding.top - padding.bottom
+        
+        // 计算数值范围（只使用纯地铁数据）
+        const pureValues = monthDailyData.map(item => item.pure)
+        const maxValue = Math.max(...pureValues) * 1.1
+        const minValue = Math.min(...pureValues) * 0.9
+        const valueRange = maxValue - minValue
+        
+        // 绘制网格和Y轴刻度
+        ctx.strokeStyle = '#f0f0f0'
+        ctx.lineWidth = 1
+        ctx.fillStyle = '#666'
+        ctx.font = '11px sans-serif'
+        ctx.textAlign = 'right'
+        
+        for (let i = 0; i <= 5; i++) {
+          const y = padding.top + chartHeight * (1 - i / 5)
+          ctx.beginPath()
+          ctx.moveTo(padding.left, y)
+          ctx.lineTo(width - padding.right, y)
+          ctx.stroke()
+          
+          // Y轴刻度
+          const value = (minValue + valueRange * i / 5).toFixed(0)
+          ctx.fillText(value, padding.left - 8, y + 4)
+        }
+        
+        // 计算纯地铁点坐标
+        const purePoints = monthDailyData.map((item, index) => {
+          const x = padding.left + (index / (monthDailyData.length - 1 || 1)) * chartWidth
+          const y = padding.top + chartHeight * (1 - (item.pure - minValue) / valueRange)
+          return { x, y, data: item }
+        })
+        
+        // 绘制纯地铁渐变区域
+        const pureGradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom)
+        pureGradient.addColorStop(0, 'rgba(74, 166, 102, 0.3)')
+        pureGradient.addColorStop(1, 'rgba(74, 166, 102, 0.05)')
+        
+        ctx.beginPath()
+        ctx.moveTo(purePoints[0].x, height - padding.bottom)
+        purePoints.forEach(p => ctx.lineTo(p.x, p.y))
+        ctx.lineTo(purePoints[purePoints.length - 1].x, height - padding.bottom)
+        ctx.closePath()
+        ctx.fillStyle = pureGradient
+        ctx.fill()
+        
+        // 绘制纯地铁折线（绿色）
+        ctx.beginPath()
+        ctx.strokeStyle = '#4EA666'
+        ctx.lineWidth = 2.5
+        purePoints.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y)
+          else ctx.lineTo(p.x, p.y)
+        })
+        ctx.stroke()
+        
+        // 绘制数据点和标签
+        purePoints.forEach((p, index) => {
+          // 纯地铁数据点（绿色）
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2)
+          ctx.fillStyle = '#4EA666'
+          ctx.fill()
+          ctx.strokeStyle = '#fff'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          // 在数据点上方显示数值
+          ctx.fillStyle = '#333'
+          ctx.font = '10px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'bottom'
+          const valueText = p.data.pure.toFixed(0)
+          ctx.fillText(valueText, p.x, p.y - 8)
+          
+          // X轴日期标签（只显示部分日期，避免重叠）
+          if (monthDailyData.length <= 15 || index % Math.ceil(monthDailyData.length / 10) === 0 || index === monthDailyData.length - 1) {
+            ctx.fillStyle = '#666'
+            ctx.font = '10px sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'top'
+            ctx.fillText(p.data.day.toString(), p.x, height - padding.bottom + 15)
+          }
+        })
+        
+        console.log('drawMonthDailyLineChart: 图表绘制完成')
       })
   },
 

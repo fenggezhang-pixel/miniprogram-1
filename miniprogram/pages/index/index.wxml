@@ -26,8 +26,26 @@
 
   <!-- 标签切换 -->
   <view class="tab-bar">
-    <view class="tab-item {{activeTab === 'daily' ? 'active' : ''}}" bindtap="switchTab" data-tab="daily">
-      <text>昨日客流</text>
+    <view class="tab-item-wrapper {{activeTab === 'daily' ? 'active-wrapper' : ''}}">
+      <view class="tab-item {{activeTab === 'daily' ? 'active' : ''}}" bindtap="switchTab" data-tab="daily">
+        <text>{{dailyAverageType === 'month' ? '月日均客流' : (dailyAverageType === 'year' ? '年日均客流' : '昨日客流')}}</text>
+        <text class="dropdown-icon {{showDailyAverage ? 'expanded' : ''}}" wx:if="{{activeTab === 'daily' && hasData}}">▼</text>
+      </view>
+      <!-- 下拉菜单 -->
+      <view class="daily-average-dropdown {{showDailyAverage && activeTab === 'daily' ? 'show' : ''}}" catchtap="preventClose">
+        <view class="dropdown-item" bindtap="selectDailyAverageType" data-type="daily">
+          <text class="dropdown-item-icon">📅</text>
+          <text class="dropdown-item-text">昨日客流</text>
+        </view>
+        <view class="dropdown-item {{dailyAverageType === 'month' ? 'selected' : ''}}" bindtap="selectDailyAverageType" data-type="month">
+          <text class="dropdown-item-icon">📊</text>
+          <text class="dropdown-item-text">月日均客流</text>
+        </view>
+        <view class="dropdown-item {{dailyAverageType === 'year' ? 'selected' : ''}}" bindtap="selectDailyAverageType" data-type="year">
+          <text class="dropdown-item-icon">📈</text>
+          <text class="dropdown-item-text">年日均客流</text>
+        </view>
+      </view>
     </view>
     <view class="tab-item {{activeTab === 'weekly' ? 'active' : ''}}" bindtap="switchTab" data-tab="weekly">
       <text>近7日趋势</text>
@@ -39,6 +57,9 @@
       <text>历史前十</text>
     </view>
   </view>
+  
+  <!-- 点击外部关闭下拉菜单 -->
+  <view class="dropdown-mask" wx:if="{{showDailyAverage && activeTab === 'daily'}}" bindtap="toggleDailyAverageMenu"></view>
 
   <!-- 加载状态 -->
   <view wx:if="{{loading}}" class="loading-container">
@@ -52,8 +73,86 @@
     <text class="error-text">{{errorMsg}}</text>
   </view>
 
-  <!-- 当日数据展示 -->
-  <view wx:elif="{{hasData && activeTab === 'daily'}}" class="data-container">
+  <!-- 日均数据展示（选择日均类型时显示） -->
+  <view wx:elif="{{activeTab === 'daily' && dailyAverageType}}" class="data-container">
+    <view class="daily-average-content">
+      <view class="average-card">
+        <!-- 加载中状态 -->
+        <view class="average-loading-inline" wx:if="{{dailyAverageData.loading}}">
+          <view class="loading-spinner small"></view>
+          <text class="average-loading-text">正在加载日均数据...</text>
+        </view>
+
+        <!-- 数据展示 -->
+        <block wx:else>
+          <!-- 月日均 -->
+          <view class="average-section" wx:if="{{dailyAverageType === 'month'}}">
+            <view class="average-section-header">
+              <text class="average-section-icon">📊</text>
+              <text class="average-section-title">{{selectedDate.slice(0,7)}} 月日均</text>
+              <text class="average-section-days" wx:if="{{dailyAverageData.monthDays > 0}}">（{{dailyAverageData.monthDays}}天）</text>
+            </view>
+            <view class="average-section-content" wx:if="{{dailyAverageData.monthTotal}}">
+              <view class="average-item">
+                <text class="average-item-label">纯地铁</text>
+                <text class="average-item-value">{{dailyAverageData.monthPure || '--'}}</text>
+                <text class="average-item-unit">万</text>
+              </view>
+              <view class="average-item-divider"></view>
+              <view class="average-item">
+                <text class="average-item-label">全网</text>
+                <text class="average-item-value">{{dailyAverageData.monthTotal}}</text>
+                <text class="average-item-unit">万</text>
+              </view>
+            </view>
+            <view class="average-section-empty" wx:else>
+              <text class="average-empty-text">暂无数据</text>
+            </view>
+          </view>
+
+          <!-- 月日均折线图 -->
+          <view class="chart-card" wx:if="{{dailyAverageType === 'month' && dailyAverageData.monthDailyData.length > 0}}">
+            <view class="chart-container month-line-chart-container">
+              <canvas type="2d" id="monthDailyLineChart" class="chart-canvas month-line-canvas"></canvas>
+            </view>
+            <!-- Logo水印 -->
+            <view class="chart-footer">
+              <image class="footer-logo" src="/images/logo.png" mode="aspectFit"></image>
+              <text class="footer-text">蓉城客流</text>
+            </view>
+          </view>
+
+          <!-- 年日均 -->
+          <view class="average-section" wx:if="{{dailyAverageType === 'year'}}">
+            <view class="average-section-header">
+              <text class="average-section-icon">📈</text>
+              <text class="average-section-title">{{selectedDate.slice(0,4)}} 年日均</text>
+              <text class="average-section-days" wx:if="{{dailyAverageData.yearDays > 0}}">（{{dailyAverageData.yearDays}}天）</text>
+            </view>
+            <view class="average-section-content" wx:if="{{dailyAverageData.yearTotal}}">
+              <view class="average-item">
+                <text class="average-item-label">纯地铁</text>
+                <text class="average-item-value">{{dailyAverageData.yearPure || '--'}}</text>
+                <text class="average-item-unit">万</text>
+              </view>
+              <view class="average-item-divider"></view>
+              <view class="average-item">
+                <text class="average-item-label">全网</text>
+                <text class="average-item-value">{{dailyAverageData.yearTotal}}</text>
+                <text class="average-item-unit">万</text>
+              </view>
+            </view>
+            <view class="average-section-empty" wx:else>
+              <text class="average-empty-text">暂无数据</text>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <!-- 当日数据展示（只在未选择日均类型时显示） -->
+  <view wx:elif="{{hasData && activeTab === 'daily' && !dailyAverageType}}" class="data-container">
     <!-- 基本信息卡片 -->
     <view class="info-card">
       <view class="info-row">
@@ -111,7 +210,7 @@
     </view>
 
     <!-- 柱状图 -->
-    <view class="chart-card">
+    <view class="chart-card" wx:if="{{!dailyAverageType}}">
       <view class="chart-header">
         <text class="chart-title">各线路客流量（万人次）</text>
       </view>
@@ -129,7 +228,7 @@
     </view>
 
     <!-- 分线路客流列表 -->
-    <view class="line-list">
+    <view class="line-list" wx:if="{{!dailyAverageType}}">
       <view class="line-list-header">
         <text class="line-list-title">各线路客流明细</text>
         <text class="line-list-subtitle">（按客流量降序排列）</text>
@@ -151,7 +250,7 @@
     </view>
 
     <!-- 一键分享按钮 -->
-    <view class="generate-image-section">
+    <view class="generate-image-section" wx:if="{{!dailyAverageType}}">
       <button class="generate-image-btn" bindtap="generateLongImage" disabled="{{generatingImage}}">
         <text class="generate-image-icon">📤</text>
         <text>{{generatingImage ? '正在生成...' : '一键分享'}}</text>
@@ -488,12 +587,12 @@
   <view class="version-tip-overlay" wx:if="{{showVersionTip}}" bindtap="closeVersionTip">
     <view class="version-tip-modal" catchtap="closeVersionTip">
       <view class="version-tip-icon">🚀</view>
-      <view class="version-tip-title">新版本 2.2.1</view>
+      <view class="version-tip-title">新版本 2.2.2</view>
       <view class="version-tip-content">
-        <view class="version-tip-item">📊 优化7日柱状图，数据差异更直观</view>
-        <view class="version-tip-item">📈 优化客流对比图表，渐变色更美观</view>
-        <view class="version-tip-item">🎨 美化日期选择区域，交互体验更佳</view>
-        <view class="version-tip-item">🎆 历史榜单新增跨年标注</view>
+        <view class="version-tip-item">📊 新增月日均客流查询功能</view>
+        <view class="version-tip-item">📈 新增年日均客流查询功能</view>
+        <view class="version-tip-item">📉 月日均界面新增每日趋势折线图</view>
+        <view class="version-tip-hint-item">💡 查询方式：点击顶部"昨日客流"标签，在下拉菜单中选择"月日均客流"或"年日均客流"即可</view>
       </view>
       <view class="version-tip-update-hint">💡 如未自动更新，请下拉删除小程序后重新打开</view>
       <view class="version-tip-hint">点击任意位置关闭</view>

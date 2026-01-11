@@ -174,6 +174,11 @@
   box-sizing: border-box;
 }
 
+.tab-item-wrapper {
+  flex: 1;
+  position: relative;
+}
+
 .tab-item {
   flex: 1;
   text-align: center;
@@ -182,12 +187,103 @@
   font-size: 28rpx;
   color: #666;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
 }
 
 .tab-item.active {
   background: linear-gradient(135deg, #b8a5c4, #9c89a8);
   color: #fff;
   font-weight: 500;
+}
+
+.dropdown-icon {
+  font-size: 20rpx;
+  color: #fff;
+  transition: transform 0.3s ease;
+  opacity: 0.8;
+}
+
+.dropdown-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单遮罩 */
+.dropdown-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 998;
+  background: transparent;
+}
+
+/* 下拉菜单 */
+.daily-average-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 8rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  opacity: 0;
+  transform: translateY(-10rpx);
+  pointer-events: none;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.daily-average-dropdown.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 30rpx;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:active {
+  background-color: #f5f5f5;
+}
+
+.dropdown-item:not(:last-child) {
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.dropdown-item-icon {
+  font-size: 32rpx;
+  margin-right: 16rpx;
+}
+
+.dropdown-item-text {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+}
+
+.dropdown-item.selected {
+  background-color: #f0f0f5;
+}
+
+.dropdown-item.selected .dropdown-item-text {
+  color: #1296db;
+  font-weight: 500;
+}
+
+/* 日均数据内容区域 */
+.daily-average-content {
+  animation: fadeIn 0.3s ease;
+  margin-bottom: 20rpx;
 }
 
 /* 加载状态 */
@@ -365,6 +461,146 @@
   font-weight: 600;
 }
 
+/* 日均客流卡片 */
+.average-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.average-card.average-loading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  gap: 16rpx;
+}
+
+.average-loading-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 50rpx 30rpx;
+  gap: 16rpx;
+}
+
+.loading-spinner.small {
+  width: 32rpx;
+  height: 32rpx;
+  border-width: 3rpx;
+}
+
+.average-loading-text {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.average-section {
+  padding: 16rpx 0;
+}
+
+.average-section:first-child {
+  padding-top: 0;
+}
+
+.average-section:last-child {
+  padding-bottom: 0;
+}
+
+.average-section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.average-section-icon {
+  font-size: 32rpx;
+  margin-right: 12rpx;
+}
+
+.average-section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.average-section-days {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+.average-section-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 16rpx;
+  padding: 24rpx 20rpx;
+}
+
+.average-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.average-item-label {
+  font-size: 24rpx;
+  color: #64748b;
+  margin-bottom: 10rpx;
+  font-weight: 500;
+}
+
+.average-item-value {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.average-item-unit {
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-top: 4rpx;
+}
+
+.average-item-divider {
+  width: 2rpx;
+  height: 60rpx;
+  background: linear-gradient(180deg, transparent, #cbd5e1, transparent);
+  margin: 0 20rpx;
+  flex-shrink: 0;
+}
+
+.average-card-divider {
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+  margin: 10rpx 0;
+}
+
+.average-section-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx;
+  background: #f8fafc;
+  border-radius: 16rpx;
+}
+
+.average-empty-text {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
 /* 兼容旧样式（用于模态框等） */
 .total-label {
   font-size: 28rpx;
@@ -470,6 +706,10 @@
   height: 400rpx;
 }
 
+.month-line-chart-container {
+  height: 450rpx;
+}
+
 .compare-chart-container {
   height: 450rpx;
 }
@@ -492,6 +732,11 @@
 .line-canvas {
   width: 690rpx;
   height: 400rpx;
+}
+
+.month-line-canvas {
+  width: 690rpx;
+  height: 450rpx;
 }
 
 .week-bar-canvas {
@@ -1941,6 +2186,19 @@
   color: #555;
   line-height: 1.6;
   padding-left: 20rpx;
+}
+
+.version-tip-hint-item {
+  font-size: 28rpx;
+  color: #1296db;
+  line-height: 1.6;
+  padding: 16rpx 20rpx;
+  background: #f0f7ff;
+  border-radius: 12rpx;
+  border-left: 4rpx solid #1296db;
+  margin-top: 8rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .version-tip-note {
