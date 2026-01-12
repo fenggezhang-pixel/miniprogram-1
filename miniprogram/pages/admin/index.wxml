@@ -3,7 +3,7 @@
   <view class="admin-header">
     <text class="admin-welcome-icon">👋</text>
     <text class="admin-title">欢迎进入数据管理</text>
-    <text class="admin-subtitle">开发者专用 · 手动录入微博数据</text>
+    <text class="admin-subtitle">开发者专用 · 手动录入客流数据</text>
   </view>
 
   <!-- 密码验证（首次访问） -->
@@ -52,14 +52,14 @@
     
     <view class="input-card">
       <view class="input-label">
-        <text class="label-text">微博文本：</text>
-        <text class="label-hint">（粘贴完整的微博文本内容）</text>
+        <text class="label-text">客流数据：</text>
+        <text class="label-hint">（粘贴完整的客流数据文本）</text>
       </view>
       <textarea 
-        class="weibo-textarea" 
-        placeholder="请粘贴微博文本，例如：#早安成都#1月14日，成都地铁客运量800.00万人次、市域（郊）铁路客运量3.35万人次、有轨电车客运量3.00万人次，线网运营平稳有序。今日周三，搭乘地铁便捷出行，早安。3-11，晴。"
-        value="{{weiboText}}"
-        bindinput="onWeiboTextInput"
+        class="data-textarea" 
+        placeholder="请粘贴客流数据，例如：1月14日，成都地铁客运量800.00万人次、市域（郊）铁路客运量3.35万人次、有轨电车客运量3.00万人次。3-11，晴。"
+        value="{{inputText}}"
+        bindinput="onTextInput"
         maxlength="500"
         show-confirm-bar="{{false}}"
         auto-height

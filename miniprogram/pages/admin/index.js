@@ -5,7 +5,7 @@ Page({
   data: {
     password: '',
     isAuthenticated: false,
-    weiboText: '',
+    inputText: '',  // 客流数据文本
     submitting: false,
     submitResult: null,
     canSubmit: false,  // 是否可以提交
@@ -62,11 +62,11 @@ Page({
     }
   },
 
-  // 微博文本输入
-  onWeiboTextInput(e) {
+  // 客流数据文本输入
+  onTextInput(e) {
     const value = e.detail.value
     this.setData({ 
-      weiboText: value,
+      inputText: value,
       canSubmit: value.trim().length > 0,  // 有文本时可以提交
       submitResult: null // 清除之前的结果
     })
@@ -74,10 +74,10 @@ Page({
 
   // 提交数据
   async submitData() {
-    const weiboText = this.data.weiboText.trim()
+    const inputText = this.data.inputText.trim()
     
-    if (!weiboText) {
-      wx.showToast({ title: '请输入微博文本', icon: 'none' })
+    if (!inputText) {
+      wx.showToast({ title: '请输入客流数据', icon: 'none' })
       return
     }
 
@@ -87,9 +87,9 @@ Page({
       wx.showLoading({ title: '提交中...', mask: true })
       
       const res = await wx.cloud.callFunction({
-        name: 'fetchWeiboData',
+        name: 'dataupdate',
         data: {
-          text: weiboText
+          text: inputText
         }
       })
 
@@ -111,7 +111,7 @@ Page({
               date: date  // 确保date字段存在
             }
           },
-          weiboText: '', // 清空输入框
+          inputText: '', // 清空输入框
           canSubmit: false // 重置提交状态
         })
       } else {

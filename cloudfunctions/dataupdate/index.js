@@ -11,31 +11,31 @@ exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
   
   try {
-    console.log('开始执行微博数据获取任务', new Date().toISOString())
+    console.log('开始执行客流数据处理任务', new Date().toISOString())
     
-    // 获取微博数据
+    // 获取客流数据文本
     // 如果通过event传入文本（用于测试或手动触发），优先使用
-    let weiboText = event.text || event.data?.text || null
+    let inputText = event.text || event.data?.text || null
     
-    if (!weiboText) {
-      // 尝试自动获取微博数据
-      weiboText = await fetchWeiboData()
+    if (!inputText) {
+      // 尝试自动获取数据（目前返回null，需要手动输入）
+      inputText = await fetchDataFromSource()
     }
     
-    if (!weiboText) {
-      console.error('未能获取微博数据')
+    if (!inputText) {
+      console.error('未能获取客流数据')
       return {
         success: false,
-        error: '未能获取微博数据，请检查微博获取函数或通过event传入文本'
+        error: '未能获取客流数据，请通过管理页面手动输入文本'
       }
     }
     
-    console.log('获取到微博文本:', weiboText)
+    console.log('获取到客流数据文本:', inputText)
     
     // 解析数据
-    const parsedData = parseWeiboText(weiboText)
+    const parsedData = parsePassengerText(inputText)
     if (!parsedData) {
-      console.error('数据解析失败，文本内容:', weiboText)
+      console.error('数据解析失败，文本内容:', inputText)
       return {
         success: false,
         error: '数据解析失败，请检查文本格式'
@@ -77,36 +77,25 @@ exports.main = async (event, context) => {
   }
 }
 
-// 获取微博数据
-async function fetchWeiboData() {
+// 从数据源获取客流数据（预留接口，目前返回null需要手动输入）
+async function fetchDataFromSource() {
   try {
-    // 注意：由于微博没有官方API，这里需要根据实际情况实现
     // 可选方案：
-    // 1. 使用微博开放平台API（需要申请权限）
-    // 2. 使用第三方微博数据服务
-    // 3. 使用HTTP请求模拟（可能违反微博服务条款）
-    // 4. 手动输入数据（通过云函数调用时传入event.data.text）
+    // 1. 对接官方数据接口
+    // 2. 通过HTTP请求获取公开数据
+    // 3. 手动输入数据（通过云函数调用时传入event.data.text）
     
-    // 如果通过云函数调用传入数据，直接返回
-    // 可以从event中获取文本：const text = event.text || event.data?.text
-    
-    // 这里提供一个示例：可以通过HTTP请求获取（需要根据实际情况实现）
-    // const result = await cloud.callFunction({
-    //   name: 'weiboProxy',
-    //   data: { userId: '成都地铁运营的用户ID' }
-    // })
-    // return result.result
-    
-    console.warn('微博数据获取功能需要根据实际情况实现')
+    // 目前使用手动输入方式
+    console.log('数据获取功能需要通过管理页面手动输入')
     return null
   } catch (error) {
-    console.error('获取微博数据失败:', error)
+    console.error('获取客流数据失败:', error)
     throw error
   }
 }
 
-// 解析微博文本
-function parseWeiboText(text) {
+// 解析客流数据文本
+function parsePassengerText(text) {
   try {
     if (!text || typeof text !== 'string') {
       console.error('文本为空或格式不正确')

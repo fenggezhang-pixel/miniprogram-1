@@ -1,7 +1,7 @@
 {
-  "name": "fetchWeiboData",
+  "name": "dataupdate",
   "version": "1.0.0",
-  "description": "Fetch passenger data from Weibo and save to cloud database",
+  "description": "Parse passenger data and save to cloud database",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
