@@ -804,6 +804,8 @@ Page({
     const year = dateParts[0]
     const month = dateParts[1]
     const day = parseInt(dateParts[2])
+    
+    console.log('解析日期:', { selectedDate, year, month, day })
 
     // 设置加载状态
     this.setData({
@@ -841,29 +843,80 @@ Page({
           monthDates.push(`${year}-${month}-${String(d).padStart(2, '0')}`)
         }
 
-        console.log('查询月日均，日期数:', monthDates.length)
+        console.log('查询月日均，日期数:', monthDates.length, 'day变量:', day, '生成的日期列表:', monthDates)
+        
+        // 天数应该是查询的日期范围，而不是实际查询到的数据条数
+        monthDays = monthDates.length
+        console.log('设置monthDays为:', monthDays)
 
-        // 批量查询月数据
+        // 批量查询月数据 - 使用or条件同时匹配date和date(date)字段
         let monthData = []
         const batchSize = 20
+        // 使用Set来去重，避免重复添加相同的记录
+        const seenIds = new Set()
+        
         for (let i = 0; i < monthDates.length; i += batchSize) {
           const batch = monthDates.slice(i, i + batchSize)
-          let res = await db.collection('passenger_data_update')
-            .where({ date: db.command.in(batch) })
+          console.log('【月数据】查询批次:', Math.floor(i / batchSize) + 1, '日期列表:', batch)
+          
+          // 使用or条件同时查询date和date(date)字段
+          const res = await db.collection('passenger_data_update')
+            .where(db.command.or([
+              { date: db.command.in(batch) },
+              { 'date(date)': db.command.in(batch) }
+            ]))
             .get()
           
-          if (!res.data || res.data.length === 0) {
-            res = await db.collection('passenger_data_update')
-              .where({ 'date(date)': db.command.in(batch) })
-              .get()
-          }
-          
+          console.log('【月数据】查询结果:', res.data ? res.data.length : 0, '条')
           if (res.data && res.data.length > 0) {
-            monthData = monthData.concat(res.data)
+            console.log('【月数据】查询到的记录:', res.data.map(r => ({
+              _id: r._id,
+              date: r.date,
+              'date(date)': r['date(date)']
+            })))
+            // 添加到结果中，避免重复
+            res.data.forEach(r => {
+              if (!seenIds.has(r._id)) {
+                monthData.push(r)
+                seenIds.add(r._id)
+              }
+            })
           }
         }
 
         console.log('月数据查询结果:', monthData.length, '条')
+        if (monthData.length > 0) {
+          console.log('查询到的所有日期详情:', monthData.map(r => {
+            return {
+              _id: r._id,
+              date: r.date,
+              'date(date)': r['date(date)'],
+              normalized: this.normalizeRecord(r).date
+            }
+          }))
+          
+          // 检查是否有重复的日期
+          const dateMap = {}
+          monthData.forEach(r => {
+            const normalized = this.normalizeRecord(r)
+            const date = normalized.date || r.date || r['date(date)']
+            if (date) {
+              const dateStr = String(date).substring(0, 10)
+              if (!dateMap[dateStr]) {
+                dateMap[dateStr] = []
+              }
+              dateMap[dateStr].push(r._id)
+            }
+          })
+          console.log('按日期分组的记录:', Object.keys(dateMap).map(d => ({
+            date: d,
+            count: dateMap[d].length,
+            ids: dateMap[d]
+          })))
+        } else {
+          console.warn('⚠️ 未查询到任何数据！查询的日期范围:', monthDates)
+        }
+        console.log('设置的monthDays:', monthDays, '查询日期范围:', monthDates.length)
 
         // 处理月数据
         if (monthData.length > 0) {
@@ -894,7 +947,7 @@ Page({
           monthDailyData.sort((a, b) => a.date.localeCompare(b.date))
           
           if (validCount > 0) {
-            monthDays = validCount
+            // monthDays 已经在上面设置为查询的日期范围，这里只计算平均值
             monthTotal = (totalSum / validCount).toFixed(2)
             monthPure = (pureSum / validCount).toFixed(2)
           }
@@ -909,24 +962,34 @@ Page({
         }
 
         console.log('查询年日均，日期数:', yearDates.length)
+        
+        // 天数应该是查询的日期范围，而不是实际查询到的数据条数
+        yearDays = yearDates.length
 
-        // 批量查询年数据
+        // 批量查询年数据 - 使用or条件同时匹配date和date(date)字段
         let yearData = []
         const batchSize = 20
+        // 使用Set来去重，避免重复添加相同的记录
+        const seenIds = new Set()
+        
         for (let i = 0; i < yearDates.length; i += batchSize) {
           const batch = yearDates.slice(i, i + batchSize)
-          let res = await db.collection('passenger_data_update')
-            .where({ date: db.command.in(batch) })
+          
+          // 使用or条件同时查询date和date(date)字段
+          const res = await db.collection('passenger_data_update')
+            .where(db.command.or([
+              { date: db.command.in(batch) },
+              { 'date(date)': db.command.in(batch) }
+            ]))
             .get()
           
-          if (!res.data || res.data.length === 0) {
-            res = await db.collection('passenger_data_update')
-              .where({ 'date(date)': db.command.in(batch) })
-              .get()
-          }
-          
           if (res.data && res.data.length > 0) {
-            yearData = yearData.concat(res.data)
+            res.data.forEach(r => {
+              if (!seenIds.has(r._id)) {
+                yearData.push(r)
+                seenIds.add(r._id)
+              }
+            })
           }
         }
 
@@ -945,7 +1008,7 @@ Page({
             }
           })
           if (validCount > 0) {
-            yearDays = validCount
+            // yearDays 已经在上面设置为查询的日期范围，这里只计算平均值
             yearTotal = (totalSum / validCount).toFixed(2)
             yearPure = (pureSum / validCount).toFixed(2)
           }
@@ -953,6 +1016,7 @@ Page({
       }
 
       console.log('日均数据计算完成:', { monthTotal, monthPure, monthDays, yearTotal, yearPure, yearDays })
+      console.log('即将设置到页面的monthDays:', monthDays)
 
       this.setData({
         dailyAverageData: {
@@ -960,14 +1024,15 @@ Page({
           monthPure,
           yearTotal,
           yearPure,
-          monthDays,
-          yearDays,
+          monthDays: monthDays,  // 使用计算出的天数
+          yearDays: yearDays,     // 使用计算出的天数
           loading: false,
           debugDates: null,
           totalCount: 0,
           monthDailyData: monthDailyData || []
         }
       }, () => {
+        console.log('数据已设置到页面，当前monthDays:', this.data.dailyAverageData.monthDays)
         // 数据设置完成后，如果是月日均类型，绘制折线图
         if (targetType === 'month' && monthDailyData.length > 0) {
           wx.nextTick(() => {
