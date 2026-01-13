@@ -1036,6 +1036,20 @@
   margin-left: 4rpx;
 }
 
+/* 预测数据提示 */
+.prediction-hint {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #eee;
+  text-align: center;
+}
+
+.prediction-hint-text {
+  font-size: 24rpx;
+  color: #999;
+  line-height: 1.5;
+}
+
 /* 7日数据列表 */
 .week-list {
   background: #fff;

@@ -27,7 +27,7 @@
   <!-- 标签切换 -->
   <view class="tab-bar">
     <view class="tab-item-wrapper {{activeTab === 'daily' ? 'active-wrapper' : ''}}">
-      <view class="tab-item {{activeTab === 'daily' ? 'active' : ''}}" bindtap="switchTab" data-tab="daily">
+    <view class="tab-item {{activeTab === 'daily' ? 'active' : ''}}" bindtap="switchTab" data-tab="daily">
         <text>{{dailyAverageType === 'month' ? '月日均客流' : (dailyAverageType === 'year' ? '年日均客流' : '昨日客流')}}</text>
         <text class="dropdown-icon {{showDailyAverage ? 'expanded' : ''}}" wx:if="{{activeTab === 'daily' && hasData}}">▼</text>
       </view>
@@ -246,6 +246,11 @@
         <view class="line-passenger">
           <text class="passenger-value">{{item.displayPassenger}}<text class="passenger-unit">万</text></text>
         </view>
+      </view>
+      
+      <!-- 预测数据提示 -->
+      <view class="prediction-hint" wx:if="{{isPredictedData}}">
+        <text class="prediction-hint-text">数据来自大数据推测，实际数据请以官方发布为准</text>
       </view>
     </view>
 
@@ -693,6 +698,11 @@
               <view class="line-passenger">
                 <text class="passenger-value">{{item.displayPassenger}}<text class="passenger-unit">万</text></text>
               </view>
+            </view>
+            
+            <!-- 预测数据提示 -->
+            <view class="prediction-hint" wx:if="{{detailModalData.isPredictedData}}">
+              <text class="prediction-hint-text">数据来自大数据推测，实际数据请以官方发布为准</text>
             </view>
           </view>
         </view>

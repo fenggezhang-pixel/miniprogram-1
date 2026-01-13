@@ -52,7 +52,7 @@ function getHolidayInfo(date) {
       return null
     }
     const monthDay = dateStr.slice(5) || ''
-    return HOLIDAY_CONFIG[monthDay] || null
+  return HOLIDAY_CONFIG[monthDay] || null
   } catch (e) {
     console.error('getHolidayInfo error:', e, 'date:', date)
     return null
@@ -113,6 +113,13 @@ const LINE_ORDER = [
   'line22', 'line23', 'line27', 'line30', 'lineS3', 'lineS13', 'lineMeishan', 'lineDeyang', 'lineRong2'
 ]
 
+// 判断日期是否为预测数据（2025-12-30之后的分线数据为预测）
+const PREDICTION_CUTOFF_DATE = '2025-12-30'
+function isPredictedLineData(dateStr) {
+  if (!dateStr) return false
+  return dateStr > PREDICTION_CUTOFF_DATE
+}
+
 Page({
   data: {
     currentDate: '',
@@ -122,6 +129,7 @@ Page({
     loading: false,
     hasData: false,
     errorMsg: '',
+    isPredictedData: false, // 是否为预测数据（分线客流）
     // 7日数据
     weekData: [],
     showWeekChart: false,
@@ -610,8 +618,9 @@ Page({
           detailModalData: {
             date: date,
             passengerData: record,
-            lineList: lineList
-  }
+            lineList: lineList,
+            isPredictedData: isPredictedLineData(date)
+          }
         })
       } else {
         this.setData({
@@ -619,8 +628,9 @@ Page({
           detailModalData: {
             date: date,
             passengerData: null,
-            lineList: []
-  }
+            lineList: [],
+            isPredictedData: false
+          }
         })
         wx.showToast({
           title: '未找到该日期的数据',
@@ -741,11 +751,15 @@ Page({
     record.metroOnlyPassenger = metroOnlyPassenger
     record.metroOnlyPassengerDisplay = metroOnlyPassenger.toFixed(2)
 
+    // 判断是否为预测数据（分线客流）
+    const isPredicted = isPredictedLineData(this.data.selectedDate)
+    
     this.setData({
       loading: false,
       hasData: true,
       passengerData: record,
-      lineList: lineList
+      lineList: lineList,
+      isPredictedData: isPredicted
     }, () => {
       // 数据设置完成后绘制图表
       // 使用 wx.nextTick 确保 DOM 更新完成
@@ -755,7 +769,7 @@ Page({
             this.drawBarChart()
           }, 300)
         })
-  }
+      }
     })
   },
 
@@ -1557,7 +1571,7 @@ Page({
 
   // 执行长图生成
   doGenerateLongImage() {
-    const { passengerData, lineList, selectedDate } = this.data
+    const { passengerData, lineList, selectedDate, isPredictedData } = this.data
     const dpr = wx.getSystemInfoSync().pixelRatio || 2
     
     // 计算画布尺寸
@@ -1569,10 +1583,11 @@ Page({
     const lineListHeaderHeight = 90
     const footerHeight = 140
     const padding = 40
+    const predictionHintHeight = isPredictedData ? 60 : 0 // 预测提示高度
     
     const canvasHeight = headerHeight + infoCardHeight + totalCardHeight + 
                          lineListHeaderHeight + (lineList.length * lineItemHeight) + 
-                         footerHeight + padding * 3
+                         predictionHintHeight + footerHeight + padding * 3
 
     wx.createSelectorQuery()
       .select('#longImageCanvas')
@@ -1599,7 +1614,7 @@ Page({
         
         logoImg.onload = () => {
           this.drawLongImageContent(ctx, canvas, logoImg, canvasWidth, canvasHeight, {
-            passengerData, lineList, selectedDate, padding,
+            passengerData, lineList, selectedDate, padding, isPredictedData,
             headerHeight, infoCardHeight, totalCardHeight, lineListHeaderHeight, lineItemHeight
           })
         }
@@ -1607,7 +1622,7 @@ Page({
         logoImg.onerror = () => {
           // logo 加载失败也继续绘制
           this.drawLongImageContent(ctx, canvas, null, canvasWidth, canvasHeight, {
-            passengerData, lineList, selectedDate, padding,
+            passengerData, lineList, selectedDate, padding, isPredictedData,
             headerHeight, infoCardHeight, totalCardHeight, lineListHeaderHeight, lineItemHeight
           })
         }
@@ -1616,7 +1631,7 @@ Page({
 
   // 绘制长图内容
   drawLongImageContent(ctx, canvas, logoImg, canvasWidth, canvasHeight, data) {
-    const { passengerData, lineList, selectedDate, padding,
+    const { passengerData, lineList, selectedDate, padding, isPredictedData,
             headerHeight, infoCardHeight, totalCardHeight, lineListHeaderHeight, lineItemHeight } = data
 
     // 绘制背景渐变
@@ -1815,6 +1830,15 @@ Page({
     })
     
     y += listHeight + padding + 20
+
+    // 绘制预测数据提示（如果是预测数据）
+    if (isPredictedData) {
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#999'
+      ctx.font = '22px sans-serif'
+      ctx.fillText('数据来自大数据推测，实际数据请以官方发布为准', canvasWidth / 2, y + 15)
+      y += 50
+    }
 
     // 绘制底部水印区域
     // logo
